@@ -1,0 +1,5 @@
+.git
+.github
+dist
+go-template-test
+*.log

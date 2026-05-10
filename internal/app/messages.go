@@ -1,0 +1,20 @@
+package app
+
+import tea "charm.land/bubbletea/v2"
+
+// routeMsg requests navigation to a registered screen ID.
+// Use screen IDs defined in registerScreens — unknown IDs are logged and ignored.
+type routeMsg struct{ ScreenID string }
+
+// toggleSidebarMsg shows or hides the sidebar.
+type toggleSidebarMsg struct{}
+
+// quitMsg signals the application to exit.
+type quitMsg struct{}
+
+// commandsExecutedMsg carries the result of a command palette action.
+// Title is shown in the header; Cmd is the tea.Cmd returned by the command's Run function.
+type commandsExecutedMsg struct {
+	Title string
+	Cmd   tea.Cmd
+}
