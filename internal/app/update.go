@@ -7,6 +7,7 @@ import (
 	"github.com/gitcoder89431/tui-tube/internal/screens"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/elpdev/tuimod"
 )
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -14,7 +15,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		return m, nil
+		// forward size to active screen so it can pre-compute layout if needed
+		active := m.screens[m.activeScreen]
+		updated, cmd := active.Update(msg)
+		m.screens[m.activeScreen] = updated
+		return m, cmd
 	case routeMsg:
 		m.switchScreen(msg.ScreenID)
 		m.showCommandPalette = false
@@ -47,7 +52,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-
 func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if key.Matches(msg, m.keys.ForceQuit) {
 		return m, tea.Quit
@@ -72,6 +76,15 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.showHelp = false
 		}
 		return m, nil
+	}
+
+	// If the active screen wants to capture this key (e.g. search input active),
+	// forward directly before any global handler runs.
+	active := m.screens[m.activeScreen]
+	if capturer, ok := active.(tuimod.KeyCapturer); ok && capturer.CapturesKey(msg) {
+		updated, cmd := active.Update(msg)
+		m.screens[m.activeScreen] = updated
+		return m, cmd
 	}
 
 	switch {
@@ -99,7 +112,6 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.handleSidebarKey(msg)
 	}
 
-	active := m.screens[m.activeScreen]
 	updated, cmd := active.Update(msg)
 	m.screens[m.activeScreen] = updated
 	return m, cmd
@@ -160,6 +172,14 @@ func (m Model) handleSidebarKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) updateDerivedScreens() {
+	lib := m.screens["library"]
+	if l, ok := lib.(screens.Library); ok {
+		m.screens["library"] = l.WithTheme(m.theme)
+	}
+	st := m.screens["stations"]
+	if s, ok := st.(screens.Stations); ok {
+		m.screens["stations"] = s.WithTheme(m.theme)
+	}
 	m.screens["settings"] = screens.NewSettings(screens.SettingsState{
 		ThemeName:      m.theme.Name,
 		SidebarVisible: m.showSidebar,

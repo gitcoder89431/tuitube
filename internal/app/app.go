@@ -5,13 +5,14 @@ import (
 	"sort"
 
 	"github.com/gitcoder89431/tui-tube/internal/commands"
+	"github.com/gitcoder89431/tui-tube/internal/db"
 	"github.com/gitcoder89431/tui-tube/internal/debug"
 	"github.com/gitcoder89431/tui-tube/internal/screens"
 	"github.com/gitcoder89431/tui-tube/internal/theme"
 	tea "charm.land/bubbletea/v2"
 )
 
-const defaultScreen = "home"
+const defaultScreen = "library"
 
 type BuildInfo struct {
 	Version string
@@ -37,12 +38,13 @@ type Model struct {
 	commands       *commands.Registry
 	commandPalette commands.PaletteModel
 
-	theme theme.Theme
-	logs  *debug.Log
-	meta  BuildInfo
+	theme    theme.Theme
+	logs     *debug.Log
+	meta     BuildInfo
+	database *db.DB
 }
 
-func New(meta BuildInfo) Model {
+func New(meta BuildInfo, database *db.DB) Model {
 	log := debug.NewLog()
 	log.Info("App started")
 
@@ -56,6 +58,7 @@ func New(meta BuildInfo) Model {
 		theme:        theme.Phosphor(),
 		logs:         log,
 		meta:         meta,
+		database:     database,
 	}
 
 	m.registerScreens()
@@ -73,7 +76,8 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m *Model) registerScreens() {
-	m.screens["home"] = screens.NewHome()
+	m.screens["library"] = screens.NewLibrary(m.database, m.theme)
+	m.screens["stations"] = screens.NewStations(m.theme)
 	m.screens["settings"] = screens.NewSettings(screens.SettingsState{
 		ThemeName:      m.theme.Name,
 		SidebarVisible: m.showSidebar,
@@ -95,7 +99,7 @@ func (m *Model) refreshScreenOrder() {
 		m.screenOrder = append(m.screenOrder, id)
 	}
 	sort.Strings(m.screenOrder)
-	preferred := []string{"home", "settings", "help", "logs"}
+	preferred := []string{"library", "stations", "settings", "help", "logs"}
 	ordered := make([]string, 0, len(m.screenOrder))
 	seen := make(map[string]bool)
 	for _, id := range preferred {
@@ -113,7 +117,8 @@ func (m *Model) refreshScreenOrder() {
 }
 
 func (m *Model) registerCommands() {
-	m.commands.Register(commands.Command{ID: "go-home", Module: commands.ModuleHome, Title: "Go to Home", Description: "Open the home screen", Keywords: []string{"home", "start"}, Run: func() tea.Cmd { return func() tea.Msg { return routeMsg{"home"} } }})
+	m.commands.Register(commands.Command{ID: "go-library", Module: commands.ModuleHome, Title: "Go to Library", Description: "Open the track library", Keywords: []string{"library", "tracks", "songs"}, Run: func() tea.Cmd { return func() tea.Msg { return routeMsg{"library"} } }})
+	m.commands.Register(commands.Command{ID: "go-stations", Module: commands.ModuleHome, Title: "Go to Stations", Description: "Open the stations list", Keywords: []string{"stations", "channels"}, Run: func() tea.Cmd { return func() tea.Msg { return routeMsg{"stations"} } }})
 	m.commands.Register(commands.Command{ID: "go-settings", Module: commands.ModuleSettings, Title: "Go to Settings", Description: "Open application settings", Keywords: []string{"settings", "config"}, Run: func() tea.Cmd { return func() tea.Msg { return routeMsg{"settings"} } }})
 	m.commands.Register(commands.Command{ID: "go-help", Module: commands.ModuleHelp, Title: "Go to Help", Description: "Open keyboard and command documentation", Keywords: []string{"help", "keys", "docs"}, Run: func() tea.Cmd { return func() tea.Msg { return routeMsg{"help"} } }})
 	m.commands.Register(commands.Command{ID: "go-logs", Module: commands.ModuleLogs, Title: "Go to Logs", Description: "Open debug event log", Keywords: []string{"logs", "debug", "events"}, Run: func() tea.Cmd { return func() tea.Msg { return routeMsg{"logs"} } }})
