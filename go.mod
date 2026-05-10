@@ -1,4 +1,4 @@
-module github.com/dev/go-tui-template
+module github.com/gitcoder89431/tui-tube
 
 go 1.26
 

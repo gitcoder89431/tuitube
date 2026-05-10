@@ -11,10 +11,10 @@ RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o /out/go-tui-template ./cmd/go-tui-template
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o /out/tui-tube ./cmd/tui-tube
 
 FROM gcr.io/distroless/static-debian12
 
-COPY --from=build /out/go-tui-template /go-tui-template
+COPY --from=build /out/tui-tube /tui-tube
 
-ENTRYPOINT ["/go-tui-template"]
+ENTRYPOINT ["/tui-tube"]

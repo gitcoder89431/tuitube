@@ -3,11 +3,11 @@ package app
 import (
 	"strings"
 
-	"github.com/dev/go-tui-template/internal/components/footer"
-	"github.com/dev/go-tui-template/internal/components/header"
-	"github.com/dev/go-tui-template/internal/components/modal"
-	"github.com/dev/go-tui-template/internal/components/sidebar"
-	"github.com/dev/go-tui-template/internal/layout"
+	"github.com/gitcoder89431/tui-tube/internal/components/footer"
+	"github.com/gitcoder89431/tui-tube/internal/components/header"
+	"github.com/gitcoder89431/tui-tube/internal/components/modal"
+	"github.com/gitcoder89431/tui-tube/internal/components/sidebar"
+	"github.com/gitcoder89431/tui-tube/internal/layout"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/bubbles/key"
@@ -21,7 +21,7 @@ func (m Model) View() tea.View {
 	dims := layout.Calculate(m.width, m.height, m.showSidebar)
 	active := m.screens[m.activeScreen]
 
-	head := header.View(header.Model{AppName: "My App", ScreenTitle: active.Title(), Version: m.meta.Version}, dims.Header.Width, dims.Header.Height, m.theme)
+	head := header.View(header.Model{AppName: "tui-tube", ScreenTitle: active.Title(), Version: m.meta.Version}, dims.Header.Width, dims.Header.Height, m.theme)
 	foot := footer.View(m.keys.ShortHelp(), dims.Footer.Width, dims.Footer.Height, m.theme)
 	mainFrameWidth, mainFrameHeight := m.theme.Main.GetFrameSize()
 	mainWidth := max(0, dims.Main.Width-mainFrameWidth)

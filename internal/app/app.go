@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/dev/go-tui-template/internal/commands"
-	"github.com/dev/go-tui-template/internal/debug"
-	"github.com/dev/go-tui-template/internal/screens"
-	"github.com/dev/go-tui-template/internal/theme"
+	"github.com/gitcoder89431/tui-tube/internal/commands"
+	"github.com/gitcoder89431/tui-tube/internal/debug"
+	"github.com/gitcoder89431/tui-tube/internal/screens"
+	"github.com/gitcoder89431/tui-tube/internal/theme"
 	tea "charm.land/bubbletea/v2"
 )
 

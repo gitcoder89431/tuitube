@@ -1,15 +1,15 @@
 version: 2
 
-project_name: go-tui-template
+project_name: tui-tube
 
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - id: go-tui-template
-    main: ./cmd/go-tui-template
-    binary: go-tui-template
+  - id: tui-tube
+    main: ./cmd/tui-tube
+    binary: tui-tube
     env:
       - CGO_ENABLED=0
     goos:

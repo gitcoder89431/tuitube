@@ -3,8 +3,8 @@ package app
 import (
 	"fmt"
 
-	"github.com/dev/go-tui-template/internal/commands"
-	"github.com/dev/go-tui-template/internal/screens"
+	"github.com/gitcoder89431/tui-tube/internal/commands"
+	"github.com/gitcoder89431/tui-tube/internal/screens"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/bubbles/key"
 )

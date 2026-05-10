@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dev/go-tui-template/internal/debug"
+	"github.com/gitcoder89431/tui-tube/internal/debug"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/bubbles/key"

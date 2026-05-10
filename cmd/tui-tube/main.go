@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dev/go-tui-template/internal/app"
+	"github.com/gitcoder89431/tui-tube/internal/app"
 	tea "charm.land/bubbletea/v2"
 )
 

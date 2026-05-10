@@ -1,7 +1,7 @@
 package modal
 
 import (
-	"github.com/dev/go-tui-template/internal/theme"
+	"github.com/gitcoder89431/tui-tube/internal/theme"
 	"charm.land/lipgloss/v2"
 )
 

@@ -3,7 +3,7 @@ package sidebar
 import (
 	"strings"
 
-	"github.com/dev/go-tui-template/internal/theme"
+	"github.com/gitcoder89431/tui-tube/internal/theme"
 )
 
 type Item struct {

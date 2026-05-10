@@ -3,7 +3,7 @@ package footer
 import (
 	"strings"
 
-	"github.com/dev/go-tui-template/internal/theme"
+	"github.com/gitcoder89431/tui-tube/internal/theme"
 	"github.com/charmbracelet/bubbles/key"
 )
 
