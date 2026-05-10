@@ -1,66 +1,100 @@
-# go-tui-template
+# tui-tube
 
-Personal base template for Go terminal UIs built on the [Charm](https://charm.sh) stack.
+A terminal UI for browsing and playing YouTube music from curated channels. Built on the [Charm](https://charm.sh) stack with a local SQLite catalog.
+
+## What it does
+
+- Browse a searchable table of tracks pulled from curated YouTube channels
+- Stream any track instantly via `mpv` (no window, background audio)
+- Download tracks to `/music/yt-radio` on demand
+- Favorite tracks and organize them into playlists
+- Sync new uploads from channels in the background
 
 ## Stack
 
 - [Bubble Tea v2](https://charm.land/bubbletea/v2) — TUI framework
 - [Lip Gloss v2](https://charm.land/lipgloss/v2) — styling and layout
-- [Bubbles](https://github.com/charmbracelet/bubbles) — components (table, spinner, list, etc.)
-- [GoReleaser v2](https://goreleaser.com) — release pipeline
+- [Bubbles](https://github.com/charmbracelet/bubbles) — table, text input
+- [modernc.org/sqlite](https://gitlab.com/cznic/sqlite) — pure Go SQLite driver (no CGo)
+- `yt-dlp` — metadata sync and audio download
+- `mpv` — headless audio playback
 
-## What's included
+## Screens
 
-- Header / sidebar / main / footer layout
-- Screen router with sidebar navigation
-- Command palette (`ctrl+k`)
-- Global keybindings and help overlay (`?`)
-- Theme system with 15+ built-in themes (`ctrl+t` to cycle)
-- Debug log screen
-- GoReleaser config + GitHub Actions release workflow (push tag or manual bump)
+| Screen | Description |
+|--------|-------------|
+| Library | Main track table with search. Browse all songs across all stations. |
+| Stations | List of synced YouTube channels with track counts and last sync time. |
+| Favorites | Tracks you've saved. Acts as a default playlist. |
+| Playlists | User-created playlists. |
+| Settings | Theme, download path, playback options. |
 
-## Starting a new project
+## Keybindings
+
+| Key | Action |
+|-----|--------|
+| `enter` | Stream selected track via mpv |
+| `d` | Download selected track to `/music/yt-radio` |
+| `f` | Toggle favorite on selected track |
+| `p` | Add selected track to a playlist |
+| `/` | Focus search input |
+| `esc` | Clear search / close overlay |
+| `ctrl+k` | Command palette |
+| `?` | Help overlay |
+| `ctrl+t` | Cycle theme |
+| `q` | Quit |
+
+## Database
+
+Local SQLite at `~/.local/share/tui-tube/tui-tube.db`. Schema:
+
+```
+stations      — YouTube channels being tracked
+tracks        — All synced videos (youtube_id, title, artist, station)
+tracks_fts    — FTS5 full-text search index over title + artist
+playlists     — User-created playlists (Favorites is id=1)
+playlist_tracks — Junction table linking tracks to playlists
+```
+
+The DB is fully portable — export to PostgreSQL or Convex at any time with a simple migration script. The `youtube_id` field is the natural key, so nothing is locked to SQLite-specific IDs.
+
+## Setup
+
+### Prerequisites
 
 ```bash
-gh repo create my-new-app --template dev/go-tui-template --clone
-cd my-new-app
+paru -S yt-dlp mpv
+```
 
-# Rename the module and binary
-OLD=github.com/dev/go-tui-template
-NEW=github.com/yourname/my-new-app
-find . -type f -name "*.go" -exec sed -i "s|$OLD|$NEW|g" {} +
-sed -i "s|$OLD|$NEW|g" go.mod
-sed -i "s|go-tui-template|my-new-app|g" .goreleaser.yaml Dockerfile
-mv cmd/go-tui-template cmd/my-new-app
+### First run — import from Convex snapshot
 
-# Update AppName in internal/app/view.go
-# Update README and AGENTS.md
+If migrating from a Convex export:
 
-go mod tidy
-go run ./cmd/my-new-app
+```bash
+python3 scripts/import_convex.py \
+  --snapshot ./temp/snapshot_*/  \
+  --db ~/.local/share/tui-tube/tui-tube.db
+```
+
+### First run — fresh sync from channels
+
+```bash
+tui-tube sync   # pulls metadata from all configured stations (no download)
+tui-tube        # launch the TUI
 ```
 
 ## Development
 
 ```bash
-go run ./cmd/go-tui-template   # run
-go test ./...                   # test
-go build ./cmd/go-tui-template  # build check
+go run ./cmd/tui-tube    # run
+go test ./...             # test
+go build ./cmd/tui-tube  # build check
 ```
 
-## Release
+## Planned
 
-Releases are handled by GoReleaser via GitHub Actions.
-
-```bash
-# Auto-trigger on tag push
-git tag v0.1.0 && git push origin v0.1.0
-
-# Or use the manual publish workflow (patch/minor/major bump)
-gh workflow run publish.yml -f bump=patch
-```
-
-## Notes
-
-- `Width(n)` / `Height(n)` in Lip Gloss v2 set the **total outer size** including borders. Do not pre-subtract `GetFrameSize()` before passing to these methods.
-- Some Bubbles components still return Bubble Tea v1 types — check for type mismatches when wiring new ones into the model.
+- [ ] Background channel sync (goroutine, configurable interval)
+- [ ] Now playing bar in footer
+- [ ] mpv socket control (pause/resume/seek without leaving TUI)
+- [ ] Export playlist to m3u
+- [ ] PostgreSQL/Convex migration script for web version
