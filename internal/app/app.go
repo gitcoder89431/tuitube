@@ -2,12 +2,12 @@ package app
 
 import (
 	"fmt"
-	"os/exec"
 	"sort"
 
 	"github.com/gitcoder89431/tui-tube/internal/commands"
 	"github.com/gitcoder89431/tui-tube/internal/db"
 	"github.com/gitcoder89431/tui-tube/internal/debug"
+	"github.com/gitcoder89431/tui-tube/internal/player"
 	"github.com/gitcoder89431/tui-tube/internal/screens"
 	"github.com/gitcoder89431/tui-tube/internal/theme"
 	tea "charm.land/bubbletea/v2"
@@ -44,7 +44,7 @@ type Model struct {
 	meta     BuildInfo
 	database *db.DB
 
-	currentPlayer *exec.Cmd
+	nowPlaying *player.State
 }
 
 func New(meta BuildInfo, database *db.DB) Model {
@@ -71,7 +71,10 @@ func New(meta BuildInfo, database *db.DB) Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	cmds := []tea.Cmd{func() tea.Msg { return tea.RequestWindowSize() }}
+	cmds := []tea.Cmd{
+		func() tea.Msg { return tea.RequestWindowSize() },
+		nowPlayingTick(),
+	}
 	for _, screen := range m.screens {
 		cmds = append(cmds, screen.Init())
 	}

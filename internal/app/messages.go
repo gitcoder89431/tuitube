@@ -18,3 +18,6 @@ type commandsExecutedMsg struct {
 	Title string
 	Cmd   tea.Cmd
 }
+
+// nowPlayingTickMsg fires every second to refresh the now-playing bar.
+type nowPlayingTickMsg struct{}

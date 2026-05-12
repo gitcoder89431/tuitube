@@ -1,6 +1,9 @@
 package db
 
-import "database/sql"
+import (
+	"database/sql"
+	"strings"
+)
 
 const favPlaylistID = 1
 
@@ -18,6 +21,9 @@ func (db *DB) ListTracks(query string, favoritesOnly bool) ([]Track, error) {
 
 	switch {
 	case query != "":
+		// Quote the query so FTS5 treats it as a literal phrase prefix.
+		// Doubling internal quotes is the FTS5 escape convention.
+		ftsQuery := `"` + strings.ReplaceAll(query, `"`, `""`) + `"*`
 		rows, err = db.conn.Query(`
 			SELECT t.id, t.youtube_id,
 			       COALESCE(NULLIF(t.song_title,''), t.raw_title),
@@ -28,7 +34,7 @@ func (db *DB) ListTracks(query string, favoritesOnly bool) ([]Track, error) {
 			LEFT JOIN playlist_tracks pt ON pt.track_id = t.id AND pt.playlist_id = ?
 			WHERE tracks_fts MATCH ?
 			ORDER BY rank
-		`, favPlaylistID, query+"*")
+		`, favPlaylistID, ftsQuery)
 	case favoritesOnly:
 		rows, err = db.conn.Query(`
 			SELECT t.id, t.youtube_id,

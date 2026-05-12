@@ -13,10 +13,17 @@ import (
 )
 
 // PlayTrackMsg asks the app to start streaming a track via mpv.
-type PlayTrackMsg struct{ YoutubeID string }
+type PlayTrackMsg struct {
+	YoutubeID string
+	Title     string
+	Artist    string
+}
 
 // DownloadTrackMsg asks the app to download a track via yt-dlp.
 type DownloadTrackMsg struct{ YoutubeID, Title, Artist string }
+
+// TogglePauseMsg asks the app to pause or resume current playback.
+type TogglePauseMsg struct{}
 
 // TracksLoadedMsg carries the result of a DB track query.
 type TracksLoadedMsg struct {
@@ -93,7 +100,11 @@ func (l Library) Update(msg tea.Msg) (Screen, tea.Cmd) {
 // CapturesKey implements tuimod.KeyCapturer.
 // When search is active, all keys go to the library screen before global handlers.
 func (l Library) CapturesKey(msg tea.KeyPressMsg) bool {
-	return l.searchActive
+	if l.searchActive {
+		return true
+	}
+	// claim esc when a search query is active so we can clear it
+	return l.searchQuery != "" && msg.String() == "esc"
 }
 
 func (l Library) handleKey(msg tea.KeyPressMsg) (Screen, tea.Cmd) {
@@ -105,21 +116,31 @@ func (l Library) handleKey(msg tea.KeyPressMsg) (Screen, tea.Cmd) {
 
 func (l Library) handleTableKey(msg tea.KeyPressMsg) (Screen, tea.Cmd) {
 	switch msg.String() {
+	case "esc":
+		if l.searchQuery != "" {
+			l.searchQuery = ""
+			l.cursor = 0
+			return l, l.loadCmd()
+		}
 	case "up", "k":
 		l.cursor = max(0, l.cursor-1)
 	case "down", "j":
 		l.cursor = min(max(0, len(l.tracks)-1), l.cursor+1)
 	case "enter":
 		if t := l.selected(); t != nil {
-			return l, func() tea.Msg { return PlayTrackMsg{YoutubeID: t.YoutubeID} }
+			return l, func() tea.Msg {
+				return PlayTrackMsg{YoutubeID: t.YoutubeID, Title: t.SongTitle, Artist: t.Artist}
+			}
 		}
+	case "p":
+		return l, func() tea.Msg { return TogglePauseMsg{} }
 	case "d":
 		if t := l.selected(); t != nil {
 			return l, func() tea.Msg {
 				return DownloadTrackMsg{YoutubeID: t.YoutubeID, Title: t.SongTitle, Artist: t.Artist}
 			}
 		}
-	case " ":
+	case " ", "space":
 		if t := l.selected(); t != nil {
 			return l, toggleFavCmd(l.database, t.ID)
 		}
@@ -152,6 +173,10 @@ func (l Library) handleSearchKey(msg tea.KeyPressMsg) (Screen, tea.Cmd) {
 			l.cursor = 0
 			return l, l.loadCmd()
 		}
+	case " ", "space":
+		l.searchQuery += " "
+		l.cursor = 0
+		return l, l.loadCmd()
 	default:
 		// append printable characters to search query
 		for _, r := range msg.String() {
@@ -292,7 +317,8 @@ func (l Library) Title() string {
 
 func (l Library) KeyBindings() []key.Binding {
 	return []key.Binding{
-		key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "play")),
+		key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "play / pause")),
+		key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "pause / resume")),
 		key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "download")),
 		key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "favorite")),
 		key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "toggle favorites")),
@@ -319,19 +345,26 @@ func toggleFavCmd(database *db.DB, trackID string) tea.Cmd {
 }
 
 func truncate(s string, maxWidth int) string {
-	runes := []rune(s)
-	if len(runes) <= maxWidth {
+	if lipgloss.Width(s) <= maxWidth {
 		return s
 	}
-	return string(runes[:maxWidth-1]) + "…"
+	// trim runes until display width fits, then append ellipsis
+	runes := []rune(s)
+	for i := len(runes) - 1; i > 0; i-- {
+		candidate := string(runes[:i]) + "…"
+		if lipgloss.Width(candidate) <= maxWidth {
+			return candidate
+		}
+	}
+	return "…"
 }
 
 func pad(s string, width int) string {
-	runes := []rune(s)
-	if len(runes) >= width {
+	sw := lipgloss.Width(s)
+	if sw >= width {
 		return truncate(s, width)
 	}
-	return s + strings.Repeat(" ", width-len(runes))
+	return s + strings.Repeat(" ", width-sw)
 }
 
 func clamp(v, lo, hi int) int {

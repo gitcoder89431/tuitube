@@ -3,8 +3,10 @@ package app
 import (
 	"fmt"
 	"os/exec"
+	"time"
 
 	"github.com/gitcoder89431/tui-tube/internal/commands"
+	"github.com/gitcoder89431/tui-tube/internal/player"
 	"github.com/gitcoder89431/tui-tube/internal/screens"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/bubbles/key"
@@ -31,29 +33,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logs.Info(fmt.Sprintf("Sidebar toggled: %t", m.showSidebar))
 		m.updateDerivedScreens()
 		return m, nil
-	case screens.PlayTrackMsg:
-		m.stopPlayer()
-		url := "https://www.youtube.com/watch?v=" + msg.YoutubeID
-		cmd := exec.Command("mpv", "--no-video", "--really-quiet", url)
-		if err := cmd.Start(); err != nil {
-			m.logs.Error("mpv", err)
-		} else {
-			m.currentPlayer = cmd
+	case nowPlayingTickMsg:
+		m.nowPlaying = player.NowPlaying()
+		return m, nowPlayingTick()
+	case screens.TogglePauseMsg:
+		if err := player.TogglePause(); err != nil {
+			m.logs.Error("toggle pause", err)
 		}
+		m.nowPlaying = player.NowPlaying()
+		return m, nil
+	case screens.PlayTrackMsg:
+		// same track → toggle pause instead of restarting
+		if m.nowPlaying != nil && m.nowPlaying.YoutubeID == msg.YoutubeID {
+			if err := player.TogglePause(); err != nil {
+				m.logs.Error("toggle pause", err)
+			}
+		} else {
+			if err := player.Play(msg.YoutubeID, msg.Title, msg.Artist); err != nil {
+				m.logs.Error("mpv", err)
+			}
+		}
+		m.nowPlaying = player.NowPlaying()
 		return m, nil
 	case screens.DownloadTrackMsg:
-		url := "https://www.youtube.com/watch?v=" + msg.YoutubeID
-		dl := exec.Command("yt-dlp",
-			"-x", "--audio-format", "mp3",
-			"-o", downloadPath+"/%(artist)s - %(title)s.%(ext)s",
-			url,
-		)
-		if err := dl.Start(); err != nil {
-			m.logs.Error("yt-dlp", err)
-		}
-		return m, nil
+		return m, downloadCmd(msg.YoutubeID, msg.Title, msg.Artist)
 	case quitMsg:
-		m.stopPlayer()
+		player.Stop()
 		m.logs.Info("Command executed: Quit")
 		return m, tea.Quit
 	case commandsExecutedMsg:
@@ -77,7 +82,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if key.Matches(msg, m.keys.ForceQuit) {
-		m.stopPlayer()
+		player.Stop()
 		return m, tea.Quit
 	}
 
@@ -129,7 +134,7 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case key.Matches(msg, m.keys.Quit):
-		m.stopPlayer()
+		player.Stop()
 		return m, tea.Quit
 	}
 
@@ -198,11 +203,20 @@ func (m Model) handleSidebarKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 const downloadPath = "/music/yt-radio"
 
-func (m *Model) stopPlayer() {
-	if m.currentPlayer != nil && m.currentPlayer.Process != nil {
-		_ = m.currentPlayer.Process.Kill()
-		_ = m.currentPlayer.Wait()
-		m.currentPlayer = nil
+func nowPlayingTick() tea.Cmd {
+	return tea.Tick(time.Second, func(time.Time) tea.Msg { return nowPlayingTickMsg{} })
+}
+
+func downloadCmd(youtubeID, title, artist string) tea.Cmd {
+	return func() tea.Msg {
+		url := "https://www.youtube.com/watch?v=" + youtubeID
+		cmd := exec.Command("yt-dlp",
+			"-x", "--audio-format", "mp3",
+			"-o", downloadPath+"/%(artist)s - %(title)s.%(ext)s",
+			url,
+		)
+		_ = cmd.Start()
+		return nil
 	}
 }
 

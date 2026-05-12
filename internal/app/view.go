@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/gitcoder89431/tui-tube/internal/components/footer"
@@ -21,8 +22,15 @@ func (m Model) View() tea.View {
 	dims := layout.Calculate(m.width, m.height, m.showSidebar)
 	active := m.screens[m.activeScreen]
 
-	head := header.View(header.Model{AppName: "tui-tube", ScreenTitle: active.Title(), Version: m.meta.Version}, dims.Header.Width, dims.Header.Height, m.theme)
+	head := header.View(header.Model{
+		AppName:     "tui-tube",
+		ScreenTitle: active.Title(),
+		Version:     m.meta.Version,
+		NowPlaying:  m.nowPlaying,
+	}, dims.Header.Width, dims.Header.Height, m.theme)
+
 	foot := footer.View(m.keys.ShortHelp(), dims.Footer.Width, dims.Footer.Height, m.theme)
+
 	mainFrameWidth, mainFrameHeight := m.theme.Main.GetFrameSize()
 	mainWidth := max(0, dims.Main.Width-mainFrameWidth)
 	mainHeight := max(0, dims.Main.Height-mainFrameHeight)
@@ -30,7 +38,11 @@ func (m Model) View() tea.View {
 
 	body := main
 	if m.showSidebar && dims.Sidebar.Width > 0 {
-		side := sidebar.View(sidebar.Model{Items: m.sidebarItems(), ActiveID: m.activeScreen, Focused: m.focus == FocusSidebar}, dims.Sidebar.Width, dims.Sidebar.Height, m.theme)
+		side := sidebar.View(sidebar.Model{
+			Items:    m.sidebarItems(),
+			ActiveID: m.activeScreen,
+			Focused:  m.focus == FocusSidebar,
+		}, dims.Sidebar.Width, dims.Sidebar.Height, m.theme)
 		body = lipgloss.JoinHorizontal(lipgloss.Top, side, main)
 	}
 
@@ -57,10 +69,23 @@ func max(a, b int) int {
 	return b
 }
 
+// staticTitles are the sidebar labels — always short, never show search state.
+var staticTitles = map[string]string{
+	"library":  "Library",
+	"stations": "Stations",
+	"settings": "Settings",
+	"help":     "Help",
+	"logs":     "Logs",
+}
+
 func (m Model) sidebarItems() []sidebar.Item {
 	items := make([]sidebar.Item, 0, len(m.screenOrder))
 	for _, id := range m.screenOrder {
-		items = append(items, sidebar.Item{ID: id, Title: m.screens[id].Title()})
+		title := staticTitles[id]
+		if title == "" {
+			title = m.screens[id].Title()
+		}
+		items = append(items, sidebar.Item{ID: id, Title: title})
 	}
 	return items
 }
@@ -85,5 +110,5 @@ func (m Model) helpOverlay() string {
 }
 
 func formatBinding(binding key.Binding) string {
-	return "  " + binding.Help().Key + "  " + binding.Help().Desc + "\n"
+	return fmt.Sprintf("  %s  %s\n", binding.Help().Key, binding.Help().Desc)
 }
