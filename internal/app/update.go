@@ -237,7 +237,7 @@ func (m Model) handleSidebarKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-const downloadPath = "/music/yt-radio"
+const downloadPath = "/music/tuitube"
 
 func nowPlayingTick() tea.Cmd {
 	return tea.Tick(time.Second, func(time.Time) tea.Msg { return nowPlayingTickMsg{} })

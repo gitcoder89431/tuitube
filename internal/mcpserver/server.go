@@ -75,9 +75,9 @@ func (s *Server) Serve() error {
 	), mcp.NewTypedToolHandler(s.createPlaylist))
 
 	srv.AddTool(mcp.NewTool("add_to_playlist",
-		mcp.WithDescription("Add a track to a playlist"),
+		mcp.WithDescription("Add one or more tracks to a playlist in a single call"),
 		mcp.WithNumber("playlist_id", mcp.Required(), mcp.Description("Playlist ID (from list_playlists)")),
-		mcp.WithString("track_id", mcp.Required(), mcp.Description("Track ID (from search_tracks)")),
+		mcp.WithArray("track_ids", mcp.Required(), mcp.Description("Array of track IDs to add (from search_tracks)"), mcp.Items(map[string]any{"type": "string"})),
 	), mcp.NewTypedToolHandler(s.addToPlaylist))
 
 	srv.AddTool(mcp.NewTool("list_playlist_tracks",
@@ -120,8 +120,8 @@ type createPlaylistArgs struct {
 }
 
 type playlistTrackArgs struct {
-	PlaylistID float64 `json:"playlist_id"`
-	TrackID    string  `json:"track_id"`
+	PlaylistID float64  `json:"playlist_id"`
+	TrackIDs   []string `json:"track_ids"`
 }
 
 type listPlaylistArgs struct {
@@ -264,10 +264,15 @@ func (s *Server) createPlaylist(_ context.Context, _ mcp.CallToolRequest, args c
 }
 
 func (s *Server) addToPlaylist(_ context.Context, _ mcp.CallToolRequest, args playlistTrackArgs) (*mcp.CallToolResult, error) {
-	if err := s.database.AddToPlaylist(int64(args.PlaylistID), args.TrackID); err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
+	pid := int64(args.PlaylistID)
+	added := 0
+	for _, id := range args.TrackIDs {
+		if err := s.database.AddToPlaylist(pid, id); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed on %s: %v", id, err)), nil
+		}
+		added++
 	}
-	return mcp.NewToolResultText("added"), nil
+	return mcp.NewToolResultText(fmt.Sprintf("added %d tracks", added)), nil
 }
 
 func (s *Server) listPlaylistTracks(_ context.Context, _ mcp.CallToolRequest, args listPlaylistArgs) (*mcp.CallToolResult, error) {
