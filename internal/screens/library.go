@@ -338,18 +338,25 @@ func (l Library) searchBar(width int) string {
 	return content
 }
 
+const scrolloff = 4 // rows to keep visible above/below cursor (Vim scrolloff)
+
 func (l Library) computeOffset(visibleRows int) int {
 	if visibleRows <= 0 || len(l.tracks) == 0 {
 		return 0
 	}
-	offset := 0
-	if l.cursor < offset {
-		offset = l.cursor
+	total := len(l.tracks)
+	soff := min(scrolloff, max(1, (visibleRows-1)/2))
+
+	// near the top — pin to start, cursor naturally has fewer than soff rows above
+	if l.cursor <= soff {
+		return 0
 	}
-	if l.cursor >= visibleRows {
-		offset = l.cursor - visibleRows + 1
+	// near the bottom — pin to end, cursor naturally has fewer than soff rows below
+	if l.cursor >= total-soff {
+		return max(0, total-visibleRows)
 	}
-	return clamp(offset, 0, max(0, len(l.tracks)-visibleRows))
+	// in the middle — keep soff rows above the cursor
+	return clamp(l.cursor-soff, 0, max(0, total-visibleRows))
 }
 
 func (l Library) selected() *db.Track {
