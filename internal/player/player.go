@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -24,6 +25,7 @@ type State struct {
 	Artist    string `json:"artist"`
 	Playing   bool   `json:"playing"`
 	Paused    bool   `json:"paused"`
+	Finished  bool   `json:"finished"` // true when mpv exited naturally (track ended)
 }
 
 // Play starts or replaces the current track. Kills any existing mpv first.
@@ -34,6 +36,7 @@ func Play(youtubeID, title, artist string) error {
 	cmd := exec.Command("mpv",
 		"--no-video",
 		"--really-quiet",
+		"--gapless-audio=yes",
 		"--input-ipc-server="+SocketPath,
 		url,
 	)
@@ -41,11 +44,20 @@ func Play(youtubeID, title, artist string) error {
 		return err
 	}
 
-	// write PID so any process can kill it later
 	_ = os.WriteFile(PIDPath, []byte(strconv.Itoa(cmd.Process.Pid)), 0644)
 
-	// reap the process in the background so it doesn't become a zombie
-	go cmd.Wait()
+	go func() {
+		cmd.Wait()
+		// Only mark finished if we weren't manually stopped (PID file still exists)
+		if _, err := os.Stat(PIDPath); err == nil {
+			_ = os.Remove(PIDPath)
+			_ = os.Remove(SocketPath)
+			s := readState()
+			s.Playing = false
+			s.Finished = true
+			_ = writeState(s)
+		}
+	}()
 
 	return writeState(State{
 		YoutubeID: youtubeID,
@@ -55,14 +67,11 @@ func Play(youtubeID, title, artist string) error {
 	})
 }
 
-// Stop kills the current mpv process if one is running.
+// Stop kills the current mpv process. Does NOT set Finished — caller stopped it.
 func Stop() {
-	// try graceful quit via IPC first
 	if sendIPC(`{"command":["quit"]}`) == nil {
 		time.Sleep(100 * time.Millisecond)
 	}
-
-	// fallback: kill by PID
 	if data, err := os.ReadFile(PIDPath); err == nil {
 		if pid, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil {
 			if p, err := os.FindProcess(pid); err == nil {
@@ -70,43 +79,55 @@ func Stop() {
 			}
 		}
 	}
-
 	_ = os.Remove(PIDPath)
 	_ = os.Remove(SocketPath)
-	_ = writeState(State{Playing: false})
+	_ = writeState(State{Playing: false, Finished: false})
 }
 
-// TogglePause sends a pause cycle command to mpv and flips the paused state in the state file.
+// TogglePause sends a pause cycle command to mpv and updates state.
 func TogglePause() error {
 	if err := sendIPC(`{"command":["cycle","pause"]}`); err != nil {
 		return err
 	}
-	data, err := os.ReadFile(StatePath)
-	if err != nil {
-		return err
-	}
-	var s State
-	if err := json.Unmarshal(data, &s); err != nil {
-		return err
-	}
+	s := readState()
 	s.Paused = !s.Paused
 	return writeState(s)
 }
 
-// NowPlaying returns the current playback state. Returns nil if nothing is playing.
+// NowPlaying returns current state. Returns nil if nothing is playing or finishing.
 func NowPlaying() *State {
-	data, err := os.ReadFile(StatePath)
-	if err != nil {
-		return nil
-	}
-	var s State
-	if err := json.Unmarshal(data, &s); err != nil {
-		return nil
-	}
-	if !s.Playing {
+	s := readState()
+	if !s.Playing && !s.Finished {
 		return nil
 	}
 	return &s
+}
+
+// IsAlive returns true if the mpv process from the PID file is still running.
+func IsAlive() bool {
+	data, err := os.ReadFile(PIDPath)
+	if err != nil {
+		return false
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		return false
+	}
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	return p.Signal(syscall.Signal(0)) == nil
+}
+
+func readState() State {
+	data, err := os.ReadFile(StatePath)
+	if err != nil {
+		return State{}
+	}
+	var s State
+	_ = json.Unmarshal(data, &s)
+	return s
 }
 
 func writeState(s State) error {
@@ -117,7 +138,6 @@ func writeState(s State) error {
 	return os.WriteFile(StatePath, data, 0644)
 }
 
-// sendIPC sends a raw JSON command to the mpv IPC socket.
 func sendIPC(cmd string) error {
 	conn, err := net.DialTimeout("unix", SocketPath, 200*time.Millisecond)
 	if err != nil {

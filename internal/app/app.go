@@ -45,6 +45,8 @@ type Model struct {
 	database *db.DB
 
 	nowPlaying *player.State
+	queue      []db.Track
+	queuePos   int
 }
 
 func New(meta BuildInfo, database *db.DB) Model {
@@ -74,6 +76,7 @@ func (m Model) Init() tea.Cmd {
 	cmds := []tea.Cmd{
 		func() tea.Msg { return tea.RequestWindowSize() },
 		nowPlayingTick(),
+		sessionResumeCmd(),
 	}
 	for _, screen := range m.screens {
 		cmds = append(cmds, screen.Init())

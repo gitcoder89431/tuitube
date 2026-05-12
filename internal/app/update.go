@@ -34,7 +34,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateDerivedScreens()
 		return m, nil
 	case nowPlayingTickMsg:
-		m.nowPlaying = player.NowPlaying()
+		state := player.NowPlaying()
+		if state != nil && state.Finished {
+			return m, m.playNextInQueue()
+		}
+		m.nowPlaying = state
 		m.syncNowPlayingToLibrary()
 		return m, nowPlayingTick()
 	case screens.TogglePauseMsg:
@@ -53,6 +57,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err := player.Play(msg.YoutubeID, msg.Title, msg.Artist); err != nil {
 				m.logs.Error("mpv", err)
 			}
+			m.buildQueue(msg.YoutubeID)
 		}
 		m.nowPlaying = player.NowPlaying()
 		m.syncNowPlayingToLibrary()
@@ -209,6 +214,22 @@ func nowPlayingTick() tea.Cmd {
 	return tea.Tick(time.Second, func(time.Time) tea.Msg { return nowPlayingTickMsg{} })
 }
 
+// sessionResumeCmd restarts playback if the state file has a track but mpv isn't running.
+func sessionResumeCmd() tea.Cmd {
+	return func() tea.Msg {
+		if player.IsAlive() {
+			return nil // mpv already running, nothing to do
+		}
+		s := player.NowPlaying()
+		if s == nil || s.Finished {
+			return nil
+		}
+		// state file has a track but no live mpv — re-play it
+		_ = player.Play(s.YoutubeID, s.Title, s.Artist)
+		return nowPlayingTickMsg{}
+	}
+}
+
 func downloadCmd(youtubeID, title, artist string) tea.Cmd {
 	return func() tea.Msg {
 		url := "https://www.youtube.com/watch?v=" + youtubeID
@@ -220,6 +241,42 @@ func downloadCmd(youtubeID, title, artist string) tea.Cmd {
 		_ = cmd.Start()
 		return nil
 	}
+}
+
+// buildQueue snapshots the library track list starting from the playing track.
+func (m *Model) buildQueue(youtubeID string) {
+	lib, ok := m.screens["library"].(screens.Library)
+	if !ok {
+		return
+	}
+	tracks := lib.Tracks()
+	m.queue = tracks
+	m.queuePos = 0
+	for i, t := range tracks {
+		if t.YoutubeID == youtubeID {
+			m.queuePos = i
+			break
+		}
+	}
+}
+
+// playNextInQueue advances the queue and plays the next track, or stops if done.
+func (m *Model) playNextInQueue() tea.Cmd {
+	next := m.queuePos + 1
+	if next >= len(m.queue) {
+		player.Stop()
+		m.nowPlaying = nil
+		m.syncNowPlayingToLibrary()
+		return nowPlayingTick()
+	}
+	m.queuePos = next
+	t := m.queue[next]
+	if err := player.Play(t.YoutubeID, t.SongTitle, t.Artist); err != nil {
+		m.logs.Error("autoplay", err)
+	}
+	m.nowPlaying = player.NowPlaying()
+	m.syncNowPlayingToLibrary()
+	return nowPlayingTick()
 }
 
 func (m *Model) syncNowPlayingToLibrary() {

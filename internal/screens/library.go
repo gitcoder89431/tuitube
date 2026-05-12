@@ -26,6 +26,7 @@ type DownloadTrackMsg struct{ YoutubeID, Title, Artist string }
 // TogglePauseMsg asks the app to pause or resume current playback.
 type TogglePauseMsg struct{}
 
+
 // TracksLoadedMsg carries the result of a DB track query.
 type TracksLoadedMsg struct {
 	Tracks []db.Track
@@ -62,6 +63,9 @@ func (l Library) WithTheme(t theme.Theme) Library {
 	l.theme = t
 	return l
 }
+
+func (l Library) Tracks() []db.Track { return l.tracks }
+func (l Library) Cursor() int        { return l.cursor }
 
 func (l Library) WithNowPlaying(youtubeID string, paused bool) Library {
 	l.nowPlayingID = youtubeID

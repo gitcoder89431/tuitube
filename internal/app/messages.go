@@ -21,3 +21,4 @@ type commandsExecutedMsg struct {
 
 // nowPlayingTickMsg fires every second to refresh the now-playing bar.
 type nowPlayingTickMsg struct{}
+
