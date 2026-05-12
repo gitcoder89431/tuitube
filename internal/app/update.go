@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"os/exec"
 
 	"github.com/gitcoder89431/tui-tube/internal/commands"
 	"github.com/gitcoder89431/tui-tube/internal/screens"
@@ -30,7 +31,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logs.Info(fmt.Sprintf("Sidebar toggled: %t", m.showSidebar))
 		m.updateDerivedScreens()
 		return m, nil
+	case screens.PlayTrackMsg:
+		m.stopPlayer()
+		url := "https://www.youtube.com/watch?v=" + msg.YoutubeID
+		cmd := exec.Command("mpv", "--no-video", "--really-quiet", url)
+		if err := cmd.Start(); err != nil {
+			m.logs.Error("mpv", err)
+		} else {
+			m.currentPlayer = cmd
+		}
+		return m, nil
+	case screens.DownloadTrackMsg:
+		url := "https://www.youtube.com/watch?v=" + msg.YoutubeID
+		dl := exec.Command("yt-dlp",
+			"-x", "--audio-format", "mp3",
+			"-o", downloadPath+"/%(artist)s - %(title)s.%(ext)s",
+			url,
+		)
+		if err := dl.Start(); err != nil {
+			m.logs.Error("yt-dlp", err)
+		}
+		return m, nil
 	case quitMsg:
+		m.stopPlayer()
 		m.logs.Info("Command executed: Quit")
 		return m, tea.Quit
 	case commandsExecutedMsg:
@@ -54,6 +77,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if key.Matches(msg, m.keys.ForceQuit) {
+		m.stopPlayer()
 		return m, tea.Quit
 	}
 
@@ -105,6 +129,7 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case key.Matches(msg, m.keys.Quit):
+		m.stopPlayer()
 		return m, tea.Quit
 	}
 
@@ -169,6 +194,16 @@ func (m Model) handleSidebarKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	m.switchScreen(m.screenOrder[idx])
 	m.updateDerivedScreens()
 	return m, nil
+}
+
+const downloadPath = "/music/yt-radio"
+
+func (m *Model) stopPlayer() {
+	if m.currentPlayer != nil && m.currentPlayer.Process != nil {
+		_ = m.currentPlayer.Process.Kill()
+		_ = m.currentPlayer.Wait()
+		m.currentPlayer = nil
+	}
 }
 
 func (m *Model) updateDerivedScreens() {

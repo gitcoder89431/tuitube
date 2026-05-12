@@ -2,7 +2,6 @@ package screens
 
 import (
 	"fmt"
-	"os/exec"
 	"strings"
 	"unicode"
 
@@ -13,7 +12,11 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 )
 
-const downloadPath = "/music/yt-radio"
+// PlayTrackMsg asks the app to start streaming a track via mpv.
+type PlayTrackMsg struct{ YoutubeID string }
+
+// DownloadTrackMsg asks the app to download a track via yt-dlp.
+type DownloadTrackMsg struct{ YoutubeID, Title, Artist string }
 
 // TracksLoadedMsg carries the result of a DB track query.
 type TracksLoadedMsg struct {
@@ -108,11 +111,13 @@ func (l Library) handleTableKey(msg tea.KeyPressMsg) (Screen, tea.Cmd) {
 		l.cursor = min(max(0, len(l.tracks)-1), l.cursor+1)
 	case "enter":
 		if t := l.selected(); t != nil {
-			return l, playCmd(t.YoutubeID)
+			return l, func() tea.Msg { return PlayTrackMsg{YoutubeID: t.YoutubeID} }
 		}
 	case "d":
 		if t := l.selected(); t != nil {
-			return l, downloadCmd(t.YoutubeID, t.SongTitle, t.Artist)
+			return l, func() tea.Msg {
+				return DownloadTrackMsg{YoutubeID: t.YoutubeID, Title: t.SongTitle, Artist: t.Artist}
+			}
 		}
 	case " ":
 		if t := l.selected(); t != nil {
@@ -303,26 +308,6 @@ func (l Library) loadCmd() tea.Cmd {
 	return func() tea.Msg {
 		tracks, err := database.ListTracks(query, favOnly)
 		return TracksLoadedMsg{Tracks: tracks, Err: err}
-	}
-}
-
-func playCmd(youtubeID string) tea.Cmd {
-	return func() tea.Msg {
-		url := "https://www.youtube.com/watch?v=" + youtubeID
-		_ = exec.Command("mpv", "--no-video", "--really-quiet", url).Start()
-		return nil
-	}
-}
-
-func downloadCmd(youtubeID, title, artist string) tea.Cmd {
-	return func() tea.Msg {
-		url := "https://www.youtube.com/watch?v=" + youtubeID
-		_ = exec.Command("yt-dlp",
-			"-x", "--audio-format", "mp3",
-			"-o", downloadPath+"/%(artist)s - %(title)s.%(ext)s",
-			url,
-		).Start()
-		return nil
 	}
 }
 

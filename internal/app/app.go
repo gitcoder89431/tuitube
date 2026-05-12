@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"os/exec"
 	"sort"
 
 	"github.com/gitcoder89431/tui-tube/internal/commands"
@@ -42,6 +43,8 @@ type Model struct {
 	logs     *debug.Log
 	meta     BuildInfo
 	database *db.DB
+
+	currentPlayer *exec.Cmd
 }
 
 func New(meta BuildInfo, database *db.DB) Model {
