@@ -238,7 +238,13 @@ func (m Model) handleSidebarKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-const downloadPath = "/music/tuitube"
+var downloadPath = func() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "Music/tuitube"
+	}
+	return home + "/Music/tuitube"
+}()
 
 func nowPlayingTick() tea.Cmd {
 	return tea.Tick(time.Second, func(time.Time) tea.Msg { return nowPlayingTickMsg{} })

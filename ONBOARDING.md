@@ -99,7 +99,7 @@ The DB is a standard SQLite file — fully portable, no lock-in.
 |-----|--------|
 | `enter` | Play selected track (or pause if already playing) |
 | `p` | Pause / resume |
-| `d` | Download track to `/music/tuitube` |
+| `d` | Download track to `~/Music/tuitube` |
 | `space` | Toggle favorite |
 | `f` | Filter to favorites only |
 | `/` | Search (live, esc to clear) |
