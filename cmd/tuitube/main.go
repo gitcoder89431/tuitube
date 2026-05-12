@@ -23,9 +23,9 @@ var (
 func defaultDBPath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "tui-tube.db"
+		return "tuitube.db"
 	}
-	return filepath.Join(home, ".local", "share", "tui-tube", "tui-tube.db")
+	return filepath.Join(home, ".local", "share", "tui-tube", "tuitube.db")
 }
 
 func main() {
@@ -35,7 +35,7 @@ func main() {
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Printf("tui-tube %s (%s, %s)\n", version, commit, date)
+		fmt.Printf("tuitube %s (%s, %s)\n", version, commit, date)
 		return
 	}
 
@@ -57,8 +57,8 @@ func main() {
 	case "":
 		runTUI(*dbPath)
 	default:
-		fmt.Fprintf(os.Stderr, "tui-tube: unknown subcommand %q\n", subcommand)
-		fmt.Fprintln(os.Stderr, "usage: tui-tube [sync | add-station | clean | mcp]")
+		fmt.Fprintf(os.Stderr, "tuitube: unknown subcommand %q\n", subcommand)
+		fmt.Fprintln(os.Stderr, "usage: tuitube [sync | add-station | clean | mcp]")
 		os.Exit(1)
 	}
 }
@@ -66,7 +66,7 @@ func main() {
 func runTUI(dbPath string) {
 	database, err := db.Open(dbPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "tui-tube: open db: %v\n", err)
+		fmt.Fprintf(os.Stderr, "tuitube: open db: %v\n", err)
 		os.Exit(1)
 	}
 	defer database.Close()
@@ -74,7 +74,7 @@ func runTUI(dbPath string) {
 	meta := app.BuildInfo{Version: version, Commit: commit, Date: date}
 	program := tea.NewProgram(app.New(meta, database))
 	if _, err := program.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "tui-tube: %v\n", err)
+		fmt.Fprintf(os.Stderr, "tuitube: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -86,14 +86,14 @@ func runSync(dbPath string, args []string) {
 
 	database, err := db.Open(dbPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "tui-tube sync: open db: %v\n", err)
+		fmt.Fprintf(os.Stderr, "tuitube sync: open db: %v\n", err)
 		os.Exit(1)
 	}
 	defer database.Close()
 
 	stations, err := database.ListStations()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "tui-tube sync: list stations: %v\n", err)
+		fmt.Fprintf(os.Stderr, "tuitube sync: list stations: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -125,14 +125,14 @@ func runSync(dbPath string, args []string) {
 func runClean(dbPath string) {
 	database, err := db.Open(dbPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "tui-tube clean: %v\n", err)
+		fmt.Fprintf(os.Stderr, "tuitube clean: %v\n", err)
 		os.Exit(1)
 	}
 	defer database.Close()
 
 	tracks, err := database.AllTracks()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "tui-tube clean: %v\n", err)
+		fmt.Fprintf(os.Stderr, "tuitube clean: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -163,12 +163,12 @@ func runClean(dbPath string) {
 func runMCP(dbPath string) {
 	database, err := db.Open(dbPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "tui-tube mcp: open db: %v\n", err)
+		fmt.Fprintf(os.Stderr, "tuitube mcp: open db: %v\n", err)
 		os.Exit(1)
 	}
 	defer database.Close()
 	if err := mcpserver.New(database).Serve(); err != nil {
-		fmt.Fprintf(os.Stderr, "tui-tube mcp: %v\n", err)
+		fmt.Fprintf(os.Stderr, "tuitube mcp: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -180,28 +180,28 @@ func runAddStation(dbPath string, args []string) {
 	fs.Parse(args)
 
 	if *channelURL == "" || *name == "" {
-		fmt.Fprintln(os.Stderr, "usage: tui-tube add-station --url <channel-url> --name <name>")
+		fmt.Fprintln(os.Stderr, "usage: tuitube add-station --url <channel-url> --name <name>")
 		os.Exit(1)
 	}
 
 	database, err := db.Open(dbPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "tui-tube add-station: open db: %v\n", err)
+		fmt.Fprintf(os.Stderr, "tuitube add-station: open db: %v\n", err)
 		os.Exit(1)
 	}
 	defer database.Close()
 
 	station, err := tubesync.DiscoverStation(*channelURL, os.Stdout)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "tui-tube add-station: %v\n", err)
+		fmt.Fprintf(os.Stderr, "tuitube add-station: %v\n", err)
 		os.Exit(1)
 	}
 	station.Name = *name
 
 	if err := database.UpsertStation(station); err != nil {
-		fmt.Fprintf(os.Stderr, "tui-tube add-station: upsert: %v\n", err)
+		fmt.Fprintf(os.Stderr, "tuitube add-station: upsert: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Printf("added station %q (id=%s, uploads=%s)\n", station.Name, station.ID, station.UploadsPlaylistID)
-	fmt.Printf("run: tui-tube sync --station %s\n", station.ID)
+	fmt.Printf("run: tuitube sync --station %s\n", station.ID)
 }

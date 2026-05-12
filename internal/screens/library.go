@@ -294,10 +294,13 @@ func (l Library) View(width, height int) string {
 }
 
 func (l Library) headerRow(titleW, artistW, width int) string {
-	return "  " +
-		l.theme.Muted.Bold(true).Render(pad("Song", titleW)) +
-		"  " +
-		l.theme.Muted.Bold(true).Render(pad("Artist", artistW))
+	rule := func(label string, colW int) string {
+		// "Label ──────────────" filling the column
+		labelW := lipgloss.Width(label)
+		fill := strings.Repeat("─", max(0, colW-labelW-1))
+		return l.theme.Muted.Bold(true).Render(label) + l.theme.Muted.Render(" "+fill)
+	}
+	return "  " + rule("Song", titleW) + "  " + rule("Artist", artistW)
 }
 
 func (l Library) trackRow(t db.Track, selected bool, titleW, artistW, width int) string {
