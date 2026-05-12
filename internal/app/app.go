@@ -44,14 +44,28 @@ type Model struct {
 	meta     BuildInfo
 	database *db.DB
 
-	nowPlaying *player.State
-	queue      []db.Track
-	queuePos   int
+	nowPlaying  *player.State
+	queue       []db.Track
+	queuePos    int
+	downloading map[string]bool
+	downloaded  map[string]bool
 }
 
 func New(meta BuildInfo, database *db.DB) Model {
 	log := debug.NewLog()
 	log.Info("App started")
+
+	// ensure downloads table exists and load persisted state
+	downloaded := make(map[string]bool)
+	if database != nil {
+		if err := database.InitDownloads(); err != nil {
+			log.Error("init downloads", err)
+		} else if dl, err := database.LoadDownloaded(); err != nil {
+			log.Error("load downloads", err)
+		} else {
+			downloaded = dl
+		}
+	}
 
 	m := Model{
 		activeScreen: defaultScreen,
@@ -64,10 +78,13 @@ func New(meta BuildInfo, database *db.DB) Model {
 		logs:         log,
 		meta:         meta,
 		database:     database,
+		downloading: make(map[string]bool),
+		downloaded:  downloaded,
 	}
 
 	m.registerScreens()
 	m.registerCommands()
+	m.syncDownloadStateToLibrary()
 	m.commandPalette = commands.NewPaletteModel(m.commands, theme.BuiltIns())
 	return m
 }

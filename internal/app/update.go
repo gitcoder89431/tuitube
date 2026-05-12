@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/gitcoder89431/tui-tube/internal/commands"
@@ -93,7 +94,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.syncNowPlayingToLibrary()
 		return m, nil
 	case screens.DownloadTrackMsg:
-		return m, downloadCmd(msg.YoutubeID, msg.Title, msg.Artist)
+		m.downloading[msg.YoutubeID] = true
+		m.syncDownloadStateToLibrary()
+		youtubeID, title, artist := msg.YoutubeID, msg.Title, msg.Artist
+		database := m.database
+		return m, func() tea.Msg {
+			result := downloadCmd(youtubeID, title, artist)()
+			fp, _ := result.(string)
+			if fp != "" {
+				_ = database.MarkDownloaded(youtubeID, fp)
+			}
+			return screens.DownloadFinishedMsg{YoutubeID: youtubeID}
+		}
+	case screens.DownloadFinishedMsg:
+		delete(m.downloading, msg.YoutubeID)
+		m.downloaded[msg.YoutubeID] = true
+		m.syncDownloadStateToLibrary()
+		return m, nil
 	case quitMsg:
 		player.Stop()
 		m.logs.Info("Command executed: Quit")
@@ -269,15 +286,38 @@ func sessionResumeCmd() tea.Cmd {
 func downloadCmd(youtubeID, title, artist string) tea.Cmd {
 	return func() tea.Msg {
 		_ = os.MkdirAll(downloadPath, 0755)
+		filename := sanitizeFilename(artist, title)
+		filepath := downloadPath + "/" + filename + ".mp3"
 		url := "https://www.youtube.com/watch?v=" + youtubeID
 		cmd := exec.Command("yt-dlp",
 			"-x", "--audio-format", "mp3",
-			"-o", downloadPath+"/%(artist)s - %(title)s.%(ext)s",
+			"-o", filepath,
 			url,
 		)
-		_ = cmd.Start()
-		return nil
+		_ = cmd.Run() // block until done so caller gets the finish signal
+		return filepath
 	}
+}
+
+// sanitizeFilename builds a clean "Artist - Title" filename from our DB data,
+// stripping characters that are unsafe on common filesystems.
+func sanitizeFilename(artist, title string) string {
+	unsafe := `/\:*?"<>|`
+	clean := func(s string) string {
+		out := make([]rune, 0, len(s))
+		for _, r := range s {
+			if strings.ContainsRune(unsafe, r) {
+				out = append(out, '-')
+			} else {
+				out = append(out, r)
+			}
+		}
+		return strings.TrimSpace(string(out))
+	}
+	if artist == "" {
+		return clean(title)
+	}
+	return clean(artist) + " - " + clean(title)
 }
 
 // buildQueue snapshots the library track list starting from the playing track.
@@ -314,6 +354,12 @@ func (m *Model) playNextInQueue() tea.Cmd {
 	m.nowPlaying = player.NowPlaying()
 	m.syncNowPlayingToLibrary()
 	return nowPlayingTick()
+}
+
+func (m *Model) syncDownloadStateToLibrary() {
+	if lib, ok := m.screens["library"].(screens.Library); ok {
+		m.screens["library"] = lib.WithDownloadState(m.downloading, m.downloaded)
+	}
 }
 
 func (m *Model) syncNowPlayingToLibrary() {

@@ -29,6 +29,9 @@ type TogglePauseMsg struct{}
 // BackMsg asks the app to navigate back (e.g. from playlist view to playlists screen).
 type BackMsg struct{}
 
+// DownloadFinishedMsg fires when yt-dlp completes for a track.
+type DownloadFinishedMsg struct{ YoutubeID string }
+
 
 // TracksLoadedMsg carries the result of a DB track query.
 type TracksLoadedMsg struct {
@@ -56,7 +59,10 @@ type Library struct {
 
 	nowPlayingID     string
 	nowPlayingPaused bool
-	playlistTitle    string // set when opened from playlists screen
+	playlistTitle    string
+
+	downloading map[string]bool
+	downloaded  map[string]bool
 }
 
 func NewLibrary(database *db.DB, t theme.Theme) Library {
@@ -87,6 +93,12 @@ func (l Library) WithTracks(tracks []db.Track) Library {
 // ReloadCmd triggers a fresh load of the full library (used after leaving a playlist view).
 func (l Library) ReloadCmd() tea.Cmd {
 	return l.loadCmd()
+}
+
+func (l Library) WithDownloadState(downloading, downloaded map[string]bool) Library {
+	l.downloading = downloading
+	l.downloaded = downloaded
+	return l
 }
 
 func (l Library) WithNowPlaying(youtubeID string, paused bool) Library {
@@ -302,15 +314,26 @@ func (l Library) trackRow(t db.Track, selected bool, titleW, artistW, width int)
 
 	artistCell := pad(truncate(t.Artist, artistW), artistW)
 
-	// cell renders text and artist segments with explicit theme colors so they're
-	// consistent regardless of what ANSI state precedes them in the row.
+	isDownloading := l.downloading[t.YoutubeID]
+	isDownloaded := l.downloaded[t.YoutubeID]
+
+	suffixW := 0
+	if t.IsFavorite {
+		suffixW += 2
+	}
+	if isDownloading || isDownloaded {
+		suffixW += 2
+	}
+	titleText := truncate(t.SongTitle, titleW-suffixW)
+	trailing := strings.Repeat(" ", max(0, titleW-lipgloss.Width(titleText)-suffixW))
+
 	textFg := l.theme.Text.GetForeground()
 	accentFg := l.theme.Accent.GetForeground()
 	warnFg := l.theme.Warn.GetForeground()
+	successFg := l.theme.Success.GetForeground()
 
-	// favorited and playing rows use bright white so they stand out
 	rowFg := textFg
-	if t.IsFavorite || playing {
+	if t.IsFavorite || playing || isDownloading || isDownloaded {
 		rowFg = lipgloss.Color("#FFFFFF")
 	}
 
@@ -322,37 +345,34 @@ func (l Library) trackRow(t db.Track, selected bool, titleW, artistW, width int)
 		return st.Render(s)
 	}
 
-	if selected {
-		selBg := l.theme.Selected.GetBackground()
-		play := cell(playSymbol, rowFg, selBg)
-		if playing {
-			play = cell(playSymbol, warnFg, selBg)
-		}
-		var title string
+	buildTitle := func(bg color.Color) string {
+		out := cell(titleText, rowFg, bg)
 		if t.IsFavorite {
-			titleText := truncate(t.SongTitle, titleW-2)
-			trailing := strings.Repeat(" ", max(0, titleW-lipgloss.Width(titleText)-2))
-			title = cell(titleText, rowFg, selBg) + cell(" ♥", accentFg, selBg) + cell(trailing, rowFg, selBg)
-		} else {
-			title = cell(pad(truncate(t.SongTitle, titleW), titleW), rowFg, selBg)
+			out += cell(" ♥", accentFg, bg)
 		}
-		return play + title + cell("  ", rowFg, selBg) + cell(artistCell, rowFg, selBg)
+		if isDownloading {
+			out += cell(" ⬇", warnFg, bg)
+		} else if isDownloaded {
+			out += cell(" ✓", successFg, bg)
+		}
+		out += cell(trailing, rowFg, bg)
+		return out
 	}
 
-	// unselected
-	play := cell(playSymbol, rowFg, nil)
+	if selected {
+		selBg := l.theme.Selected.GetBackground()
+		playCell := cell(playSymbol, rowFg, selBg)
+		if playing {
+			playCell = cell(playSymbol, warnFg, selBg)
+		}
+		return playCell + buildTitle(selBg) + cell("  ", rowFg, selBg) + cell(artistCell, rowFg, selBg)
+	}
+
+	playCell := cell(playSymbol, rowFg, nil)
 	if playing {
-		play = cell(playSymbol, warnFg, nil)
+		playCell = cell(playSymbol, warnFg, nil)
 	}
-	var title string
-	if t.IsFavorite {
-		titleText := truncate(t.SongTitle, titleW-2)
-		trailing := strings.Repeat(" ", max(0, titleW-lipgloss.Width(titleText)-2))
-		title = cell(titleText, rowFg, nil) + cell(" ♥", accentFg, nil) + cell(trailing, rowFg, nil)
-	} else {
-		title = cell(pad(truncate(t.SongTitle, titleW), titleW), rowFg, nil)
-	}
-	return play + title + cell("  ", rowFg, nil) + cell(artistCell, rowFg, nil)
+	return playCell + buildTitle(nil) + cell("  ", rowFg, nil) + cell(artistCell, rowFg, nil)
 }
 
 func (l Library) searchBar(width int) string {
