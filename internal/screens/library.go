@@ -2,6 +2,7 @@ package screens
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 	"unicode"
 
@@ -268,52 +269,59 @@ func (l Library) trackRow(t db.Track, selected bool, titleW, artistW, width int)
 		}
 	}
 
-	// title: ♥ sits right after the text, column pads after the heart
-	var titlePlain, titleColored string
-	if t.IsFavorite {
-		titleText := truncate(t.SongTitle, titleW-2)
-		trailing := strings.Repeat(" ", max(0, titleW-lipgloss.Width(titleText)-2))
-		titlePlain = titleText + " ♥" + trailing
-		titleColored = titleText + l.theme.Accent.Render(" ♥") + trailing
-	} else {
-		titlePlain = pad(truncate(t.SongTitle, titleW), titleW)
-		titleColored = titlePlain
-	}
-
 	artistCell := pad(truncate(t.Artist, artistW), artistW)
 
-	if selected {
-		// Every segment explicitly carries the selected background so inner ANSI
-		// resets can't kill it for subsequent segments.
-		selBg := l.theme.Selected.GetBackground()
-		bg := func(s string) string {
-			return lipgloss.NewStyle().Background(selBg).Render(s)
-		}
-		bgFg := func(s string, st lipgloss.Style) string {
-			return lipgloss.NewStyle().Foreground(st.GetForeground()).Background(selBg).Render(s)
-		}
+	// cell renders text and artist segments with explicit theme colors so they're
+	// consistent regardless of what ANSI state precedes them in the row.
+	textFg := l.theme.Text.GetForeground()
+	accentFg := l.theme.Accent.GetForeground()
+	warnFg := l.theme.Warn.GetForeground()
 
-		play := bg(playSymbol)
+	// favorited and playing rows use bright white so they stand out
+	rowFg := textFg
+	if t.IsFavorite || playing {
+		rowFg = lipgloss.Color("#FFFFFF")
+	}
+
+	cell := func(s string, fg, bg color.Color) string {
+		st := lipgloss.NewStyle().Foreground(fg)
+		if bg != nil {
+			st = st.Background(bg)
+		}
+		return st.Render(s)
+	}
+
+	if selected {
+		selBg := l.theme.Selected.GetBackground()
+		play := cell(playSymbol, rowFg, selBg)
 		if playing {
-			play = bgFg(playSymbol, l.theme.Warn)
+			play = cell(playSymbol, warnFg, selBg)
 		}
 		var title string
 		if t.IsFavorite {
 			titleText := truncate(t.SongTitle, titleW-2)
 			trailing := strings.Repeat(" ", max(0, titleW-lipgloss.Width(titleText)-2))
-			title = bg(titleText) + bgFg(" ♥", l.theme.Accent) + bg(trailing)
+			title = cell(titleText, rowFg, selBg) + cell(" ♥", accentFg, selBg) + cell(trailing, rowFg, selBg)
 		} else {
-			title = bg(pad(truncate(t.SongTitle, titleW), titleW))
+			title = cell(pad(truncate(t.SongTitle, titleW), titleW), rowFg, selBg)
 		}
-		return play + title + bg("  ") + bg(artistCell)
+		return play + title + cell("  ", rowFg, selBg) + cell(artistCell, rowFg, selBg)
 	}
 
-	// unselected: amber play, cyan ♥
-	coloredPlay := playSymbol
+	// unselected
+	play := cell(playSymbol, rowFg, nil)
 	if playing {
-		coloredPlay = l.theme.Warn.Render(playSymbol)
+		play = cell(playSymbol, warnFg, nil)
 	}
-	return coloredPlay + titleColored + "  " + artistCell
+	var title string
+	if t.IsFavorite {
+		titleText := truncate(t.SongTitle, titleW-2)
+		trailing := strings.Repeat(" ", max(0, titleW-lipgloss.Width(titleText)-2))
+		title = cell(titleText, rowFg, nil) + cell(" ♥", accentFg, nil) + cell(trailing, rowFg, nil)
+	} else {
+		title = cell(pad(truncate(t.SongTitle, titleW), titleW), rowFg, nil)
+	}
+	return play + title + cell("  ", rowFg, nil) + cell(artistCell, rowFg, nil)
 }
 
 func (l Library) searchBar(width int) string {
