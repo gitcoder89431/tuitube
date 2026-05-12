@@ -1,3 +1,44 @@
-tui-tube.db
-tui-tube.db-shm
-tui-tube.db-wal
+# Binaries
+tui-tube
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+*.out
+
+# Build output
+dist/
+
+# Dependency cache
+vendor/
+
+# Go workspace
+go.work
+go.work.sum
+
+# Environment
+.env
+.env.*
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# Temp / scratch
+temp/
+tmp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
