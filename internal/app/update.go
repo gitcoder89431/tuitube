@@ -41,6 +41,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.nowPlaying = state
 		m.syncNowPlayingToLibrary()
 		return m, nowPlayingTick()
+	case screens.BackMsg:
+		m.switchScreen("playlists")
+		if lib, ok := m.screens["library"].(screens.Library); ok {
+			m.screens["library"] = lib.WithPlaylistTitle("")
+			return m, lib.ReloadCmd()
+		}
+		return m, nil
+	case screens.PlaylistsLoadedMsg:
+		// route directly to playlists screen regardless of which screen is active
+		if pl, ok := m.screens["playlists"].(screens.Playlists); ok {
+			updated, cmd := pl.Update(msg)
+			m.screens["playlists"] = updated
+			return m, cmd
+		}
+		return m, nil
+	case screens.PlaylistSelectedMsg:
+		return m, func() tea.Msg {
+			tracks, err := msg.Loader()
+			if err != nil {
+				return screens.TracksLoadedMsg{Err: err}
+			}
+			return playlistOpenMsg{title: msg.Title, tracks: tracks}
+		}
+	case playlistOpenMsg:
+		m.switchScreen("library")
+		if lib, ok := m.screens["library"].(screens.Library); ok {
+			m.screens["library"] = lib.WithPlaylistTitle(msg.title).WithTracks(msg.tracks)
+		}
+		return m, nil
 	case screens.TogglePauseMsg:
 		if err := player.TogglePause(); err != nil {
 			m.logs.Error("toggle pause", err)
@@ -295,9 +324,9 @@ func (m *Model) updateDerivedScreens() {
 	if l, ok := lib.(screens.Library); ok {
 		m.screens["library"] = l.WithTheme(m.theme)
 	}
-	st := m.screens["stations"]
-	if s, ok := st.(screens.Stations); ok {
-		m.screens["stations"] = s.WithTheme(m.theme)
+	pl := m.screens["playlists"]
+	if p, ok := pl.(screens.Playlists); ok {
+		m.screens["playlists"] = p.WithTheme(m.theme)
 	}
 	m.screens["settings"] = screens.NewSettings(screens.SettingsState{
 		ThemeName:      m.theme.Name,

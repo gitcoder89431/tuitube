@@ -1,6 +1,9 @@
 package app
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+	"github.com/gitcoder89431/tui-tube/internal/db"
+)
 
 // routeMsg requests navigation to a registered screen ID.
 // Use screen IDs defined in registerScreens — unknown IDs are logged and ignored.
@@ -21,4 +24,10 @@ type commandsExecutedMsg struct {
 
 // nowPlayingTickMsg fires every second to refresh the now-playing bar.
 type nowPlayingTickMsg struct{}
+
+// playlistOpenMsg carries pre-loaded tracks from a playlist selection.
+type playlistOpenMsg struct {
+	title  string
+	tracks []db.Track
+}
 

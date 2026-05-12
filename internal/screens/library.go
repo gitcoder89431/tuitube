@@ -26,6 +26,9 @@ type DownloadTrackMsg struct{ YoutubeID, Title, Artist string }
 // TogglePauseMsg asks the app to pause or resume current playback.
 type TogglePauseMsg struct{}
 
+// BackMsg asks the app to navigate back (e.g. from playlist view to playlists screen).
+type BackMsg struct{}
+
 
 // TracksLoadedMsg carries the result of a DB track query.
 type TracksLoadedMsg struct {
@@ -53,6 +56,7 @@ type Library struct {
 
 	nowPlayingID     string
 	nowPlayingPaused bool
+	playlistTitle    string // set when opened from playlists screen
 }
 
 func NewLibrary(database *db.DB, t theme.Theme) Library {
@@ -66,6 +70,24 @@ func (l Library) WithTheme(t theme.Theme) Library {
 
 func (l Library) Tracks() []db.Track { return l.tracks }
 func (l Library) Cursor() int        { return l.cursor }
+
+func (l Library) WithPlaylistTitle(title string) Library {
+	l.playlistTitle = title
+	l.searchQuery = ""
+	l.favoritesOnly = false
+	return l
+}
+
+func (l Library) WithTracks(tracks []db.Track) Library {
+	l.tracks = tracks
+	l.cursor = 0
+	return l
+}
+
+// ReloadCmd triggers a fresh load of the full library (used after leaving a playlist view).
+func (l Library) ReloadCmd() tea.Cmd {
+	return l.loadCmd()
+}
 
 func (l Library) WithNowPlaying(youtubeID string, paused bool) Library {
 	l.nowPlayingID = youtubeID
@@ -117,8 +139,10 @@ func (l Library) CapturesKey(msg tea.KeyPressMsg) bool {
 	if l.searchActive {
 		return true
 	}
-	// claim esc when a search query is active so we can clear it
-	return l.searchQuery != "" && msg.String() == "esc"
+	if msg.String() == "esc" {
+		return l.searchQuery != "" || l.playlistTitle != ""
+	}
+	return false
 }
 
 func (l Library) handleKey(msg tea.KeyPressMsg) (Screen, tea.Cmd) {
@@ -135,6 +159,9 @@ func (l Library) handleTableKey(msg tea.KeyPressMsg) (Screen, tea.Cmd) {
 			l.searchQuery = ""
 			l.cursor = 0
 			return l, l.loadCmd()
+		}
+		if l.playlistTitle != "" {
+			return l, func() tea.Msg { return BackMsg{} }
 		}
 	case "up", "k":
 		l.cursor = max(0, l.cursor-1)
@@ -377,6 +404,8 @@ func (l Library) Title() string {
 		return fmt.Sprintf("Library · %q", l.searchQuery)
 	case l.favoritesOnly:
 		return "Library · Favorites"
+	case l.playlistTitle != "":
+		return l.playlistTitle
 	default:
 		count := ""
 		if len(l.tracks) > 0 {

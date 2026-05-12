@@ -86,7 +86,7 @@ func (m Model) Init() tea.Cmd {
 
 func (m *Model) registerScreens() {
 	m.screens["library"] = screens.NewLibrary(m.database, m.theme)
-	m.screens["stations"] = screens.NewStations(m.theme)
+	m.screens["playlists"] = screens.NewPlaylists(m.database, m.theme)
 	m.screens["settings"] = screens.NewSettings(screens.SettingsState{
 		ThemeName:      m.theme.Name,
 		SidebarVisible: m.showSidebar,
@@ -108,7 +108,7 @@ func (m *Model) refreshScreenOrder() {
 		m.screenOrder = append(m.screenOrder, id)
 	}
 	sort.Strings(m.screenOrder)
-	preferred := []string{"library", "stations", "settings", "help", "logs"}
+	preferred := []string{"library", "playlists", "settings", "help", "logs"}
 	ordered := make([]string, 0, len(m.screenOrder))
 	seen := make(map[string]bool)
 	for _, id := range preferred {
@@ -127,7 +127,7 @@ func (m *Model) refreshScreenOrder() {
 
 func (m *Model) registerCommands() {
 	m.commands.Register(commands.Command{ID: "go-library", Module: commands.ModuleHome, Title: "Go to Library", Description: "Open the track library", Keywords: []string{"library", "tracks", "songs"}, Run: func() tea.Cmd { return func() tea.Msg { return routeMsg{"library"} } }})
-	m.commands.Register(commands.Command{ID: "go-stations", Module: commands.ModuleHome, Title: "Go to Stations", Description: "Open the stations list", Keywords: []string{"stations", "channels"}, Run: func() tea.Cmd { return func() tea.Msg { return routeMsg{"stations"} } }})
+	m.commands.Register(commands.Command{ID: "go-playlists", Module: commands.ModuleHome, Title: "Go to Playlists", Description: "Open the playlists lobby", Keywords: []string{"playlists", "stations", "channels"}, Run: func() tea.Cmd { return func() tea.Msg { return routeMsg{"playlists"} } }})
 	m.commands.Register(commands.Command{ID: "go-settings", Module: commands.ModuleSettings, Title: "Go to Settings", Description: "Open application settings", Keywords: []string{"settings", "config"}, Run: func() tea.Cmd { return func() tea.Msg { return routeMsg{"settings"} } }})
 	m.commands.Register(commands.Command{ID: "go-help", Module: commands.ModuleHelp, Title: "Go to Help", Description: "Open keyboard and command documentation", Keywords: []string{"help", "keys", "docs"}, Run: func() tea.Cmd { return func() tea.Msg { return routeMsg{"help"} } }})
 	m.commands.Register(commands.Command{ID: "go-logs", Module: commands.ModuleLogs, Title: "Go to Logs", Description: "Open debug event log", Keywords: []string{"logs", "debug", "events"}, Run: func() tea.Cmd { return func() tea.Msg { return routeMsg{"logs"} } }})

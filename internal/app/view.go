@@ -72,11 +72,11 @@ func max(a, b int) int {
 
 // staticTitles are the sidebar labels — always short, never show search state.
 var staticTitles = map[string]string{
-	"library":  "Library",
-	"stations": "Stations",
-	"settings": "Settings",
-	"help":     "Help",
-	"logs":     "Logs",
+	"library":   "Library",
+	"playlists": "Playlists",
+	"settings":  "Settings",
+	"help":      "Help",
+	"logs":      "Logs",
 }
 
 func (m Model) footerBindings(active screens.Screen) []key.Binding {
