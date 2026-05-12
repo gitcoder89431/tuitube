@@ -48,6 +48,9 @@ type Library struct {
 	searchActive  bool
 	favoritesOnly bool
 	err           error
+
+	nowPlayingID     string
+	nowPlayingPaused bool
 }
 
 func NewLibrary(database *db.DB, t theme.Theme) Library {
@@ -56,6 +59,12 @@ func NewLibrary(database *db.DB, t theme.Theme) Library {
 
 func (l Library) WithTheme(t theme.Theme) Library {
 	l.theme = t
+	return l
+}
+
+func (l Library) WithNowPlaying(youtubeID string, paused bool) Library {
+	l.nowPlayingID = youtubeID
+	l.nowPlayingPaused = paused
 	return l
 }
 
@@ -241,27 +250,70 @@ func (l Library) View(width, height int) string {
 }
 
 func (l Library) headerRow(titleW, artistW, width int) string {
-	fav := l.theme.Muted.Render("♥ ")
-	title := l.theme.Muted.Bold(true).Render(pad("Song", titleW))
-	sep := l.theme.Muted.Render("  ")
-	artist := l.theme.Muted.Bold(true).Render(pad("Artist", artistW))
-	return fav + title + sep + artist
+	return "  " +
+		l.theme.Muted.Bold(true).Render(pad("Song", titleW)) +
+		"  " +
+		l.theme.Muted.Bold(true).Render(pad("Artist", artistW))
 }
 
 func (l Library) trackRow(t db.Track, selected bool, titleW, artistW, width int) string {
-	fav := "  "
-	if t.IsFavorite {
-		fav = l.theme.Accent.Render("♥ ")
-	}
-	title := truncate(t.SongTitle, titleW)
-	artist := truncate(t.Artist, artistW)
+	playing := t.YoutubeID == l.nowPlayingID
 
-	row := fav + pad(title, titleW) + "  " + pad(artist, artistW)
+	playSymbol := "  "
+	if playing {
+		if l.nowPlayingPaused {
+			playSymbol = "⏸ "
+		} else {
+			playSymbol = "▶ "
+		}
+	}
+
+	// title: ♥ sits right after the text, column pads after the heart
+	var titlePlain, titleColored string
+	if t.IsFavorite {
+		titleText := truncate(t.SongTitle, titleW-2)
+		trailing := strings.Repeat(" ", max(0, titleW-lipgloss.Width(titleText)-2))
+		titlePlain = titleText + " ♥" + trailing
+		titleColored = titleText + l.theme.Accent.Render(" ♥") + trailing
+	} else {
+		titlePlain = pad(truncate(t.SongTitle, titleW), titleW)
+		titleColored = titlePlain
+	}
+
+	artistCell := pad(truncate(t.Artist, artistW), artistW)
 
 	if selected {
-		row = l.theme.Selected.Width(width).Render(row)
+		// Every segment explicitly carries the selected background so inner ANSI
+		// resets can't kill it for subsequent segments.
+		selBg := l.theme.Selected.GetBackground()
+		bg := func(s string) string {
+			return lipgloss.NewStyle().Background(selBg).Render(s)
+		}
+		bgFg := func(s string, st lipgloss.Style) string {
+			return lipgloss.NewStyle().Foreground(st.GetForeground()).Background(selBg).Render(s)
+		}
+
+		play := bg(playSymbol)
+		if playing {
+			play = bgFg(playSymbol, l.theme.Warn)
+		}
+		var title string
+		if t.IsFavorite {
+			titleText := truncate(t.SongTitle, titleW-2)
+			trailing := strings.Repeat(" ", max(0, titleW-lipgloss.Width(titleText)-2))
+			title = bg(titleText) + bgFg(" ♥", l.theme.Accent) + bg(trailing)
+		} else {
+			title = bg(pad(truncate(t.SongTitle, titleW), titleW))
+		}
+		return play + title + bg("  ") + bg(artistCell)
 	}
-	return row
+
+	// unselected: amber play, cyan ♥
+	coloredPlay := playSymbol
+	if playing {
+		coloredPlay = l.theme.Warn.Render(playSymbol)
+	}
+	return coloredPlay + titleColored + "  " + artistCell
 }
 
 func (l Library) searchBar(width int) string {
@@ -317,11 +369,10 @@ func (l Library) Title() string {
 
 func (l Library) KeyBindings() []key.Binding {
 	return []key.Binding{
-		key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "play / pause")),
-		key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "pause / resume")),
+		key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "pause")),
 		key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "download")),
 		key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "favorite")),
-		key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "toggle favorites")),
+		key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "favorites")),
 		key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
 	}
 }

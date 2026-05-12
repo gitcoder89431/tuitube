@@ -9,6 +9,7 @@ import (
 	"github.com/gitcoder89431/tui-tube/internal/components/modal"
 	"github.com/gitcoder89431/tui-tube/internal/components/sidebar"
 	"github.com/gitcoder89431/tui-tube/internal/layout"
+	"github.com/gitcoder89431/tui-tube/internal/screens"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/bubbles/key"
@@ -29,7 +30,7 @@ func (m Model) View() tea.View {
 		NowPlaying:  m.nowPlaying,
 	}, dims.Header.Width, dims.Header.Height, m.theme)
 
-	foot := footer.View(m.keys.ShortHelp(), dims.Footer.Width, dims.Footer.Height, m.theme)
+	foot := footer.View(m.footerBindings(active), dims.Footer.Width, dims.Footer.Height, m.theme)
 
 	mainFrameWidth, mainFrameHeight := m.theme.Main.GetFrameSize()
 	mainWidth := max(0, dims.Main.Width-mainFrameWidth)
@@ -76,6 +77,12 @@ var staticTitles = map[string]string{
 	"settings": "Settings",
 	"help":     "Help",
 	"logs":     "Logs",
+}
+
+func (m Model) footerBindings(active screens.Screen) []key.Binding {
+	screenKeys := active.KeyBindings()
+	globals := []key.Binding{m.keys.Help, m.keys.Quit}
+	return append(screenKeys, globals...)
 }
 
 func (m Model) sidebarItems() []sidebar.Item {

@@ -35,6 +35,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case nowPlayingTickMsg:
 		m.nowPlaying = player.NowPlaying()
+		m.syncNowPlayingToLibrary()
 		return m, nowPlayingTick()
 	case screens.TogglePauseMsg:
 		if err := player.TogglePause(); err != nil {
@@ -54,6 +55,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.nowPlaying = player.NowPlaying()
+		m.syncNowPlayingToLibrary()
 		return m, nil
 	case screens.DownloadTrackMsg:
 		return m, downloadCmd(msg.YoutubeID, msg.Title, msg.Artist)
@@ -217,6 +219,17 @@ func downloadCmd(youtubeID, title, artist string) tea.Cmd {
 		)
 		_ = cmd.Start()
 		return nil
+	}
+}
+
+func (m *Model) syncNowPlayingToLibrary() {
+	id, paused := "", false
+	if m.nowPlaying != nil {
+		id = m.nowPlaying.YoutubeID
+		paused = m.nowPlaying.Paused
+	}
+	if lib, ok := m.screens["library"].(screens.Library); ok {
+		m.screens["library"] = lib.WithNowPlaying(id, paused)
 	}
 }
 
