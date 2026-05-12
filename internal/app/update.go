@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"time"
 
@@ -261,6 +262,7 @@ func sessionResumeCmd() tea.Cmd {
 
 func downloadCmd(youtubeID, title, artist string) tea.Cmd {
 	return func() tea.Msg {
+		_ = os.MkdirAll(downloadPath, 0755)
 		url := "https://www.youtube.com/watch?v=" + youtubeID
 		cmd := exec.Command("yt-dlp",
 			"-x", "--audio-format", "mp3",
