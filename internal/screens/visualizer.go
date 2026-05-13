@@ -23,6 +23,7 @@ const (
 	VisModeOff    VisMode = iota
 	VisModeMatrix         // katakana / digit rain
 	VisModeBinary         // scrolling 0s and 1s
+	VisModeRain           // falling vertical drop streaks
 	visModeCount
 )
 
@@ -73,6 +74,47 @@ func RenderMatrix(width, height int, frame uint64, t theme.Theme) string {
 	return strings.Join(lines, "\n")
 }
 
+// RenderRain renders falling vertical drop streaks using box-drawing characters.
+// Each column has independent speed and drop length for an organic feel.
+func RenderRain(width, height int, frame uint64, t theme.Theme) string {
+	headFg := t.Accent.GetForeground() // bright drop head
+	midFg := t.Text.GetForeground()   // drop body
+	tailFg := t.Muted.GetForeground() // fading tail
+
+	cell := func(ch rune, fg color.Color) string {
+		return lipgloss.NewStyle().Foreground(fg).Render(string(ch))
+	}
+
+	lines := make([]string, height)
+	for row := 0; row < height; row++ {
+		var sb strings.Builder
+		for col := 0; col < width; col++ {
+			seed := uint64(col)*7919 + 104729
+			speed := 1 + int(seed%3)         // 1-3 frames per step
+			dropLen := 2 + int((seed/7)%3)   // 2-4 chars tall
+			cycleLen := height + dropLen + 3
+			offset := int((seed / 13) % uint64(cycleLen))
+			pos := (int(frame)/speed + offset) % cycleLen
+			dist := pos - row
+
+			if dist >= 0 && dist < dropLen {
+				switch {
+				case dist == 0:
+					sb.WriteString(cell('┃', headFg))
+				case dist == 1:
+					sb.WriteString(cell('│', midFg))
+				default:
+					sb.WriteString(cell(':', tailFg))
+				}
+			} else {
+				sb.WriteByte(' ')
+			}
+		}
+		lines[row] = sb.String()
+	}
+	return strings.Join(lines, "\n")
+}
+
 // RenderBinary renders scrolling columns of 0s and 1s.
 // Columns scroll at different speeds; 1s are brighter than 0s.
 func RenderBinary(width, height int, frame uint64, t theme.Theme) string {
@@ -89,8 +131,8 @@ func RenderBinary(width, height int, frame uint64, t theme.Theme) string {
 		var sb strings.Builder
 		for col := 0; col < width; col++ {
 			seed := uint64(col)*7919 + uint64(row)*6271
-			// each column scrolls at a distinct speed (1-4 rows/tick)
-			speed := uint64(1 + seed%4)
+			// each column scrolls at a distinct speed, scaled down for readability
+			speed := uint64(3 + seed%5)
 			scroll := int(frame / speed)
 
 			// deterministic bit: hash of (col, scrolled-row)
