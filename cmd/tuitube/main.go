@@ -28,7 +28,7 @@ func defaultDBPath() string {
 	if err != nil {
 		return "tuitube.db"
 	}
-	return filepath.Join(home, ".local", "share", "tui-tube", "tuitube.db")
+	return filepath.Join(home, ".local", "share", "tuitube", "tuitube.db")
 }
 
 func main() {
