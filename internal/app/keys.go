@@ -19,8 +19,10 @@ type KeyMap struct {
 	Up         key.Binding
 	Down       key.Binding
 	Enter      key.Binding
-	Visualizer key.Binding
-	CycleTheme key.Binding
+	Visualizer   key.Binding
+	CycleTheme   key.Binding
+	SeekForward  key.Binding
+	SeekBackward key.Binding
 }
 
 func DefaultKeyMap() KeyMap {
@@ -35,7 +37,9 @@ func DefaultKeyMap() KeyMap {
 		Down:      key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("down/j", "down")),
 		Enter:      key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
 		Visualizer:  key.NewBinding(key.WithKeys("v"), key.WithHelp("v", "visualizer")),
-		CycleTheme:  key.NewBinding(key.WithKeys("ctrl+t"), key.WithHelp("ctrl+t", "cycle theme")),
+		CycleTheme:   key.NewBinding(key.WithKeys("ctrl+t"), key.WithHelp("ctrl+t", "cycle theme")),
+		SeekForward:  key.NewBinding(key.WithKeys("right"), key.WithHelp("→", "+5s")),
+		SeekBackward: key.NewBinding(key.WithKeys("left"), key.WithHelp("←", "-5s")),
 	}
 }
 

@@ -181,6 +181,12 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
+	case key.Matches(msg, m.keys.SeekForward):
+		_ = player.SeekForward()
+		return m, nil
+	case key.Matches(msg, m.keys.SeekBackward):
+		_ = player.SeekBackward()
+		return m, nil
 	case key.Matches(msg, m.keys.CycleTheme):
 		themes := theme.BuiltIns()
 		for i, t := range themes {

@@ -138,6 +138,16 @@ func writeState(s State) error {
 	return os.WriteFile(StatePath, data, 0644)
 }
 
+// SeekForward seeks 5 seconds forward.
+func SeekForward() error {
+	return sendIPC(`{"command":["seek",5]}`)
+}
+
+// SeekBackward seeks 5 seconds backward.
+func SeekBackward() error {
+	return sendIPC(`{"command":["seek",-5]}`)
+}
+
 // Progress returns the current playback position and total duration in seconds.
 // Returns zeros if mpv isn't running or the query fails.
 func Progress() (timePos, duration float64) {
