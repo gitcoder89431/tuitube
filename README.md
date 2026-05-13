@@ -85,7 +85,28 @@ tuitube sync --station ID  # one station
 
 ## Claude MCP
 
-Register the MCP server in `~/.claude.json`:
+tuitube exposes 11 MCP tools so Claude can manage your library without the TUI open.
+
+| Tool | Params | What it does |
+|------|--------|-------------|
+| `search_tracks` | `query`, `favorites_only`, `limit` | Search library by artist/title |
+| `play_track` | `youtube_id`, `title` | Stream a track via mpv |
+| `stop_playback` | — | Stop current track |
+| `toggle_favorite` | `track_id` | Favorite or unfavorite a track |
+| `list_playlists` | — | List all playlists with track counts |
+| `create_playlist` | `name` | Create a new playlist |
+| `add_to_playlist` | `playlist_id`, `track_ids[]` | Add multiple tracks at once |
+| `list_playlist_tracks` | `playlist_id` | List tracks in a playlist |
+| `list_stations` | — | List all synced YouTube channels |
+| `add_station` | `url`, `name`, `sync_now` | Add a YouTube channel |
+| `sync_station` | `station_id` | Pull new uploads from a channel |
+
+**Example prompts:**
+- *"Make me a 20-track late night playlist and start playing it"*
+- *"Add the NCS channel and sync it — https://www.youtube.com/@NCSMusic"*
+- *"Search for something melancholic by Conan Gray and favorite it"*
+
+Register in `~/.claude.json`:
 
 ```json
 {

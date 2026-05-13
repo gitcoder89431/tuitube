@@ -155,3 +155,37 @@ goreleaser release --snapshot --clean   # local snapshot check
 - Comments only where the why is non-obvious.
 - No premature abstractions.
 - No optional dependencies unless actively used.
+
+## Persona DB Patterns
+
+tuitube supports multiple independent libraries via `--db`. Use this to create vibe-specific personas:
+
+```bash
+# work/focus persona
+tuitube --db ~/.local/share/tuitube/focus.db bootstrap
+tuitube --db ~/.local/share/tuitube/focus.db sync
+
+# high-energy / gym persona
+tuitube --db ~/.local/share/tuitube/gym.db bootstrap
+tuitube --db ~/.local/share/tuitube/gym.db add-station \
+  --url "https://www.youtube.com/@SomeEnergeticChannel" --name "Hype"
+
+# launch with a specific persona
+tuitube --db ~/.local/share/tuitube/focus.db
+```
+
+Each persona DB has its own playlists, favorites, and downloads. The MCP server can target any persona:
+
+```json
+{ "args": ["--db", "~/.local/share/tuitube/focus.db", "mcp"] }
+```
+
+## MCP Tools Reference
+
+The MCP server (`tuitube mcp`) exposes 11 tools. Key ones for agents:
+
+- `search_tracks` — always call this first to get IDs before playing/favoriting
+- `add_to_playlist` — accepts an array of `track_ids`, batch in one call
+- `sync_station` — returns per-station inserted counts and sync log
+
+Before doing CLI work, run `tuitube doctor` to verify dependencies are healthy.
