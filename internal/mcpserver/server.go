@@ -23,7 +23,7 @@ func New(database *db.DB) *Server {
 
 func (s *Server) Serve() error {
 	srv := server.NewMCPServer(
-		"tui-tube",
+		"tuitube",
 		"1.0.0",
 		server.WithToolCapabilities(false),
 	)
