@@ -74,6 +74,27 @@ INSERT INTO tracks   SELECT * FROM src.tracks;
 INSERT INTO tracks_fts(tracks_fts) VALUES('rebuild');
 INSERT INTO meta VALUES ('catalog_version', '$VERSION');
 
+-- demo playlists: shipped with catalog, seeded into new installs
+CREATE TABLE demo_playlists (
+  name TEXT PRIMARY KEY
+);
+CREATE TABLE demo_playlist_tracks (
+  playlist_name TEXT NOT NULL REFERENCES demo_playlists(name) ON DELETE CASCADE,
+  youtube_id    TEXT NOT NULL,
+  PRIMARY KEY (playlist_name, youtube_id)
+);
+
+-- export all non-Favorites playlists as demos
+INSERT INTO demo_playlists (name)
+  SELECT name FROM src.playlists WHERE id != 1;
+
+INSERT INTO demo_playlist_tracks (playlist_name, youtube_id)
+  SELECT p.name, t.youtube_id
+  FROM src.playlist_tracks pt
+  JOIN src.playlists p ON p.id = pt.playlist_id
+  JOIN src.tracks t ON t.id = pt.track_id
+  WHERE p.id != 1;
+
 DETACH DATABASE src;
 SQL
 

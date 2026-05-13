@@ -115,12 +115,65 @@ func (db *DB) MergeCatalog(catalogPath string) error {
 	// rebuild FTS over merged tracks
 	db.conn.Exec("INSERT INTO tracks_fts(tracks_fts) VALUES('rebuild')")
 
+	// seed demo playlists — only if they don't already exist by name
+	if err := db.seedDemoPlaylists(); err != nil {
+		return fmt.Errorf("seed demo playlists: %w", err)
+	}
+
 	// record the version we just merged
 	_, err = db.conn.Exec(
 		"INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
 		catalogVersionKey, catVersion,
 	)
 	return err
+}
+
+// seedDemoPlaylists reads demo_playlists from the attached catalog and creates
+// any that don't already exist in the user's playlists table.
+func (db *DB) seedDemoPlaylists() error {
+	// check if catalog has demo tables
+	var n int
+	err := db.conn.QueryRow(
+		"SELECT COUNT(*) FROM cat.sqlite_master WHERE type='table' AND name='demo_playlists'",
+	).Scan(&n)
+	if err != nil || n == 0 {
+		return nil // older catalog, no demo playlists
+	}
+
+	rows, err := db.conn.Query("SELECT name FROM cat.demo_playlists")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return err
+		}
+		// skip if user already has a playlist with this name
+		var count int
+		db.conn.QueryRow("SELECT COUNT(*) FROM playlists WHERE name=?", name).Scan(&count)
+		if count > 0 {
+			continue
+		}
+		// create playlist and add its tracks
+		res, err := db.conn.Exec("INSERT INTO playlists (name) VALUES (?)", name)
+		if err != nil {
+			return err
+		}
+		pid, _ := res.LastInsertId()
+		_, err = db.conn.Exec(`
+			INSERT OR IGNORE INTO playlist_tracks (playlist_id, track_id)
+			SELECT ?, t.id FROM cat.demo_playlist_tracks dpt
+			JOIN tracks t ON t.youtube_id = dpt.youtube_id
+			WHERE dpt.playlist_name = ?
+		`, pid, name)
+		if err != nil {
+			return err
+		}
+	}
+	return rows.Err()
 }
 
 // DefaultCatalogPath returns the system catalog path, falling back to a local
