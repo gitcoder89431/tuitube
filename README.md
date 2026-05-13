@@ -111,6 +111,12 @@ Two-file model:
 
 On launch, tuitube auto-merges a newer `catalog.db` into the user DB. New tracks appear, nothing the user added is touched.
 
+## Credits
+
+- **[elpdev](https://github.com/elpdev)** — `tuitheme`, `tuimod`, `tuilayout`, `tuipalette` — the component system this is built on
+- **[bjarneo/cliamp](https://github.com/bjarneo/cliamp)** — matrix and synthwave visualizers, ported from MIT-licensed source
+- **[KraXen72/shira](https://github.com/KraXen72/shira)** — `CleanTitle` title normalisation function, ported from MIT-licensed source
+
 ## Development
 
 ```bash
