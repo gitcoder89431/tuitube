@@ -52,18 +52,89 @@ func main() {
 		runAddStation(*dbPath, args[1:])
 	case "clean":
 		runClean(*dbPath)
+	case "bootstrap":
+		runBootstrap(*dbPath, args[1:])
 	case "mcp":
 		runMCP(*dbPath)
 	case "":
 		runTUI(*dbPath)
 	default:
 		fmt.Fprintf(os.Stderr, "tuitube: unknown subcommand %q\n", subcommand)
-		fmt.Fprintln(os.Stderr, "usage: tuitube [sync | add-station | clean | mcp]")
+		fmt.Fprintln(os.Stderr, "usage: tuitube [sync | add-station | clean | bootstrap | mcp]")
 		os.Exit(1)
 	}
 }
 
+func runBootstrap(dbPath string, args []string) {
+	fs := flag.NewFlagSet("bootstrap", flag.ExitOnError)
+	catalogPath := fs.String("catalog", db.DefaultCatalogPath(), "path to catalog.db")
+	fs.Parse(args)
+
+	if _, err := os.Stat(*catalogPath); err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube bootstrap: catalog not found at %s\n", *catalogPath)
+		fmt.Fprintln(os.Stderr, "  use --catalog /path/to/catalog.db to specify location")
+		os.Exit(1)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube bootstrap: %v\n", err)
+		os.Exit(1)
+	}
+
+	database, err := db.Open(dbPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube bootstrap: open db: %v\n", err)
+		os.Exit(1)
+	}
+	defer database.Close()
+
+	if err := database.InitUserDB(); err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube bootstrap: init: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("merging catalog from %s...\n", *catalogPath)
+	if err := database.MergeCatalog(*catalogPath); err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube bootstrap: merge: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("done. run: tuitube")
+}
+
+// autoMerge checks if a catalog is available and newer than what's already
+// merged, and silently merges it in. Called on every TUI/MCP startup.
+func autoMerge(dbPath string) {
+	catalogPath := db.DefaultCatalogPath()
+	if _, err := os.Stat(catalogPath); err != nil {
+		return // no catalog installed, skip
+	}
+	database, err := db.Open(dbPath)
+	if err != nil {
+		return
+	}
+	defer database.Close()
+
+	cat, err := db.Open(catalogPath)
+	if err != nil {
+		return
+	}
+	catVersion := cat.CatalogVersion()
+	cat.Close()
+
+	if catVersion == "" || catVersion == database.CatalogVersion() {
+		return // already up to date
+	}
+
+	_ = database.InitUserDB()
+	_ = database.MergeCatalog(catalogPath)
+}
+
 func runTUI(dbPath string) {
+	autoMerge(dbPath)
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube: %v\n", err)
+		os.Exit(1)
+	}
 	database, err := db.Open(dbPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "tuitube: open db: %v\n", err)

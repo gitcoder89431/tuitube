@@ -24,8 +24,9 @@ go.work.sum
 .env
 .env.*
 
-# SQLite
-*.db
+# SQLite — user DB ignored, catalog tracked
+tui-tube.db
+tuitube.db
 *.db-shm
 *.db-wal
 
