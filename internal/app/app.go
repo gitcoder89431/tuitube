@@ -47,8 +47,8 @@ type Model struct {
 	nowPlaying      *player.State
 	timePos         float64
 	duration        float64
-	showVisualizer  bool
-	visFrame        uint64
+	visMode  screens.VisMode
+	visFrame uint64
 	queue       []db.Track
 	queuePos    int
 	downloading map[string]bool

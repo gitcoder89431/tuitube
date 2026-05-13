@@ -16,6 +16,18 @@ var matrixChars = []rune{
 	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 }
 
+// VisMode selects the active visualizer.
+type VisMode int
+
+const (
+	VisModeOff    VisMode = iota
+	VisModeMatrix         // katakana / digit rain
+	VisModeBinary         // scrolling 0s and 1s
+	visModeCount
+)
+
+func (m VisMode) Next() VisMode { return (m + 1) % visModeCount }
+
 // RenderMatrix renders one frame of matrix digital rain.
 // frame is a monotonically increasing tick counter.
 // Colors are pulled from the theme so it adapts to any palette.
@@ -54,6 +66,50 @@ func RenderMatrix(width, height int, frame uint64, t theme.Theme) string {
 				default:
 					sb.WriteString(cell(ch, tailFg))
 				}
+			}
+		}
+		lines[row] = sb.String()
+	}
+	return strings.Join(lines, "\n")
+}
+
+// RenderBinary renders scrolling columns of 0s and 1s.
+// Columns scroll at different speeds; 1s are brighter than 0s.
+func RenderBinary(width, height int, frame uint64, t theme.Theme) string {
+	brightFg := t.Accent.GetForeground() // bright 1s
+	midFg := t.Text.GetForeground()     // normal 1s
+	dimFg := t.Muted.GetForeground()    // 0s
+
+	cell := func(ch byte, fg color.Color) string {
+		return lipgloss.NewStyle().Foreground(fg).Render(string(ch))
+	}
+
+	lines := make([]string, height)
+	for row := 0; row < height; row++ {
+		var sb strings.Builder
+		for col := 0; col < width; col++ {
+			seed := uint64(col)*7919 + uint64(row)*6271
+			// each column scrolls at a distinct speed (1-4 rows/tick)
+			speed := uint64(1 + seed%4)
+			scroll := int(frame / speed)
+
+			// deterministic bit: hash of (col, scrolled-row)
+			h := seed ^ (uint64(scroll+row)*104729)
+			h ^= h >> 16
+			h *= 0x45d9f3b37197344b
+			h ^= h >> 16
+			prob := h % 100
+
+			// ~35% ones, ~65% zeros
+			if prob < 35 {
+				// brighter 1 for the leading edge of each column's scroll
+				if (scroll+row)%height < 3 {
+					sb.WriteString(cell('1', brightFg))
+				} else {
+					sb.WriteString(cell('1', midFg))
+				}
+			} else {
+				sb.WriteString(cell('0', dimFg))
 			}
 		}
 		lines[row] = sb.String()

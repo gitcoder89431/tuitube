@@ -36,7 +36,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateDerivedScreens()
 		return m, nil
 	case visTickMsg:
-		if m.showVisualizer {
+		if m.visMode != screens.VisModeOff {
 			m.visFrame++
 			return m, visTick()
 		}
@@ -181,8 +181,8 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	switch {
 	case key.Matches(msg, m.keys.Visualizer):
-		m.showVisualizer = !m.showVisualizer
-		if m.showVisualizer {
+		m.visMode = m.visMode.Next()
+		if m.visMode != screens.VisModeOff {
 			return m, visTick()
 		}
 		return m, nil

@@ -33,7 +33,7 @@ func DefaultKeyMap() KeyMap {
 		Up:        key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("up/k", "up")),
 		Down:      key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("down/j", "down")),
 		Enter:      key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
-		Visualizer: key.NewBinding(key.WithKeys("v"), key.WithHelp("v", "visualizer")),
+		Visualizer: key.NewBinding(key.WithKeys("v"), key.WithHelp("v", "visualizer cycle")),
 	}
 }
 

@@ -39,9 +39,12 @@ func (m Model) View() tea.View {
 	mainHeight := max(0, dims.Main.Height-mainFrameHeight)
 
 	var mainContent string
-	if m.showVisualizer {
+	switch m.visMode {
+	case screens.VisModeMatrix:
 		mainContent = screens.RenderMatrix(mainWidth, mainHeight, m.visFrame, m.theme)
-	} else {
+	case screens.VisModeBinary:
+		mainContent = screens.RenderBinary(mainWidth, mainHeight, m.visFrame, m.theme)
+	default:
 		mainContent = active.View(mainWidth, mainHeight)
 	}
 	main := m.theme.Main.Width(dims.Main.Width).Height(dims.Main.Height).Render(mainContent)
