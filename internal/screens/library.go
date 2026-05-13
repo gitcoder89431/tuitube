@@ -378,7 +378,7 @@ func (l Library) trackRow(t db.Track, selected bool, titleW, artistW, width int)
 }
 
 func (l Library) searchBar(width int) string {
-	prefix := l.theme.Accent.Render("/ ")
+	prefix := l.theme.Accent.Render("> ")
 	query := l.searchQuery
 	cursor := l.theme.Accent.Render("█")
 	content := prefix + query + cursor
