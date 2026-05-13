@@ -1,6 +1,9 @@
 package db
 
-import "database/sql"
+import (
+	"database/sql"
+	"encoding/json"
+)
 
 type Station struct {
 	ID               string
@@ -77,6 +80,40 @@ func (db *DB) UpdateStationSyncTime(stationID string) error {
 		"UPDATE stations SET last_synced=strftime('%s','now')*1000 WHERE id=?",
 		stationID,
 	)
+	return err
+}
+
+// UnenrichedTracks returns all tracks that have no tags yet.
+func (db *DB) UnenrichedTracks() ([]Track, error) {
+	rows, err := db.conn.Query(`
+		SELECT id, youtube_id,
+		       COALESCE(NULLIF(song_title,''), raw_title),
+		       COALESCE(artist,''), 0
+		FROM tracks WHERE tags IS NULL OR tags = ''
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var tracks []Track
+	for rows.Next() {
+		var t Track
+		var isFav int
+		if err := rows.Scan(&t.ID, &t.YoutubeID, &t.SongTitle, &t.Artist, &isFav); err != nil {
+			return nil, err
+		}
+		tracks = append(tracks, t)
+	}
+	return tracks, rows.Err()
+}
+
+// SetTags stores a JSON array of tags for a track.
+func (db *DB) SetTags(trackID string, tags []string) error {
+	b, err := json.Marshal(tags)
+	if err != nil {
+		return err
+	}
+	_, err = db.conn.Exec("UPDATE tracks SET tags=? WHERE id=?", string(b), trackID)
 	return err
 }
 

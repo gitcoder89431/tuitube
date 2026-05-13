@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"strings"
 )
 
@@ -13,6 +14,7 @@ type Track struct {
 	SongTitle  string
 	Artist     string
 	IsFavorite bool
+	Tags       []string
 }
 
 func (db *DB) ListTracks(query string, favoritesOnly bool) ([]Track, error) {
@@ -21,14 +23,13 @@ func (db *DB) ListTracks(query string, favoritesOnly bool) ([]Track, error) {
 
 	switch {
 	case query != "":
-		// Quote the query so FTS5 treats it as a literal phrase prefix.
-		// Doubling internal quotes is the FTS5 escape convention.
 		ftsQuery := `"` + strings.ReplaceAll(query, `"`, `""`) + `"*`
 		rows, err = db.conn.Query(`
 			SELECT t.id, t.youtube_id,
 			       COALESCE(NULLIF(t.song_title,''), t.raw_title),
 			       COALESCE(t.artist,''),
-			       CASE WHEN pt.track_id IS NOT NULL THEN 1 ELSE 0 END
+			       CASE WHEN pt.track_id IS NOT NULL THEN 1 ELSE 0 END,
+			       COALESCE(t.tags,'')
 			FROM tracks_fts fts
 			JOIN tracks t ON t.rowid = fts.rowid
 			LEFT JOIN playlist_tracks pt ON pt.track_id = t.id AND pt.playlist_id = ?
@@ -40,7 +41,8 @@ func (db *DB) ListTracks(query string, favoritesOnly bool) ([]Track, error) {
 			SELECT t.id, t.youtube_id,
 			       COALESCE(NULLIF(t.song_title,''), t.raw_title),
 			       COALESCE(t.artist,''),
-			       1
+			       1,
+			       COALESCE(t.tags,'')
 			FROM playlist_tracks pt
 			JOIN tracks t ON t.id = pt.track_id
 			WHERE pt.playlist_id = ?
@@ -51,7 +53,8 @@ func (db *DB) ListTracks(query string, favoritesOnly bool) ([]Track, error) {
 			SELECT t.id, t.youtube_id,
 			       COALESCE(NULLIF(t.song_title,''), t.raw_title),
 			       COALESCE(t.artist,''),
-			       CASE WHEN pt.track_id IS NOT NULL THEN 1 ELSE 0 END
+			       CASE WHEN pt.track_id IS NOT NULL THEN 1 ELSE 0 END,
+			       COALESCE(t.tags,'')
 			FROM tracks t
 			LEFT JOIN playlist_tracks pt ON pt.track_id = t.id AND pt.playlist_id = ?
 			ORDER BY t.published_at DESC
@@ -66,10 +69,14 @@ func (db *DB) ListTracks(query string, favoritesOnly bool) ([]Track, error) {
 	for rows.Next() {
 		var t Track
 		var isFav int
-		if err := rows.Scan(&t.ID, &t.YoutubeID, &t.SongTitle, &t.Artist, &isFav); err != nil {
+		var tagsJSON string
+		if err := rows.Scan(&t.ID, &t.YoutubeID, &t.SongTitle, &t.Artist, &isFav, &tagsJSON); err != nil {
 			return nil, err
 		}
 		t.IsFavorite = isFav == 1
+		if tagsJSON != "" {
+			json.Unmarshal([]byte(tagsJSON), &t.Tags)
+		}
 		tracks = append(tracks, t)
 	}
 	return tracks, rows.Err()
