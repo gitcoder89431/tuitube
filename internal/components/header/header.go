@@ -38,7 +38,7 @@ func View(m Model, width, height int, t theme.Theme) string {
 		}
 		progress := ""
 		if m.Duration > 0 {
-			progress = "  " + fmtTime(m.TimePos) + "/" + fmtTime(m.Duration)
+			progress = "  |  " + fmtTime(m.TimePos) + "/" + fmtTime(m.Duration)
 		}
 		sep := t.Muted.Render("  |  ")
 		sepW := lipgloss.Width(sep)
