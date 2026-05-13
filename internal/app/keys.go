@@ -10,15 +10,16 @@ const (
 )
 
 type KeyMap struct {
-	Quit      key.Binding
-	ForceQuit key.Binding
-	Commands  key.Binding
-	Help      key.Binding
-	Cancel    key.Binding
-	Focus     key.Binding
-	Up        key.Binding
-	Down      key.Binding
-	Enter     key.Binding
+	Quit       key.Binding
+	ForceQuit  key.Binding
+	Commands   key.Binding
+	Help       key.Binding
+	Cancel     key.Binding
+	Focus      key.Binding
+	Up         key.Binding
+	Down       key.Binding
+	Enter      key.Binding
+	Visualizer key.Binding
 }
 
 func DefaultKeyMap() KeyMap {
@@ -31,7 +32,8 @@ func DefaultKeyMap() KeyMap {
 		Focus:     key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "focus")),
 		Up:        key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("up/k", "up")),
 		Down:      key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("down/j", "down")),
-		Enter:     key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
+		Enter:      key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
+		Visualizer: key.NewBinding(key.WithKeys("v"), key.WithHelp("v", "visualizer")),
 	}
 }
 

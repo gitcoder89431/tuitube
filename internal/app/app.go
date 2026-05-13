@@ -44,9 +44,11 @@ type Model struct {
 	meta     BuildInfo
 	database *db.DB
 
-	nowPlaying  *player.State
-	timePos     float64
-	duration    float64
+	nowPlaying      *player.State
+	timePos         float64
+	duration        float64
+	showVisualizer  bool
+	visFrame        uint64
 	queue       []db.Track
 	queuePos    int
 	downloading map[string]bool

@@ -35,6 +35,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logs.Info(fmt.Sprintf("Sidebar toggled: %t", m.showSidebar))
 		m.updateDerivedScreens()
 		return m, nil
+	case visTickMsg:
+		if m.showVisualizer {
+			m.visFrame++
+			return m, visTick()
+		}
+		return m, nil
 	case nowPlayingTickMsg:
 		state := player.NowPlaying()
 		if state != nil && state.Finished {
@@ -174,6 +180,12 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
+	case key.Matches(msg, m.keys.Visualizer):
+		m.showVisualizer = !m.showVisualizer
+		if m.showVisualizer {
+			return m, visTick()
+		}
+		return m, nil
 	case key.Matches(msg, m.keys.Commands):
 		m.showCommandPalette = true
 		m.commandPalette.Reset(m.theme.Name, m.paletteContext())
@@ -268,6 +280,10 @@ var downloadPath = func() string {
 
 func nowPlayingTick() tea.Cmd {
 	return tea.Tick(time.Second, func(time.Time) tea.Msg { return nowPlayingTickMsg{} })
+}
+
+func visTick() tea.Cmd {
+	return tea.Tick(33*time.Millisecond, func(time.Time) tea.Msg { return visTickMsg{} })
 }
 
 // sessionResumeCmd restarts playback if the state file has a track but mpv isn't running.

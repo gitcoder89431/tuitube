@@ -37,7 +37,14 @@ func (m Model) View() tea.View {
 	mainFrameWidth, mainFrameHeight := m.theme.Main.GetFrameSize()
 	mainWidth := max(0, dims.Main.Width-mainFrameWidth)
 	mainHeight := max(0, dims.Main.Height-mainFrameHeight)
-	main := m.theme.Main.Width(dims.Main.Width).Height(dims.Main.Height).Render(active.View(mainWidth, mainHeight))
+
+	var mainContent string
+	if m.showVisualizer {
+		mainContent = screens.RenderMatrix(mainWidth, mainHeight, m.visFrame, m.theme)
+	} else {
+		mainContent = active.View(mainWidth, mainHeight)
+	}
+	main := m.theme.Main.Width(dims.Main.Width).Height(dims.Main.Height).Render(mainContent)
 
 	body := main
 	if m.showSidebar && dims.Sidebar.Width > 0 {
@@ -83,7 +90,7 @@ var staticTitles = map[string]string{
 
 func (m Model) footerBindings(active screens.Screen) []key.Binding {
 	screenKeys := active.KeyBindings()
-	globals := []key.Binding{m.keys.Help, m.keys.Quit}
+	globals := []key.Binding{m.keys.Visualizer, m.keys.Help, m.keys.Quit}
 	return append(screenKeys, globals...)
 }
 

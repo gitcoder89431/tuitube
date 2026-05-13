@@ -25,6 +25,9 @@ type commandsExecutedMsg struct {
 // nowPlayingTickMsg fires every second to refresh the now-playing bar.
 type nowPlayingTickMsg struct{}
 
+// visTickMsg fires at ~30fps to advance the visualizer animation.
+type visTickMsg struct{}
+
 // playlistOpenMsg carries pre-loaded tracks from a playlist selection.
 type playlistOpenMsg struct {
 	title  string
