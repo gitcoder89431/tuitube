@@ -389,6 +389,6 @@ func (m *Model) updateDerivedScreens() {
 		Commit:         m.meta.Commit,
 		Date:           m.meta.Date,
 	}, m.theme)
-	m.screens["help"] = screens.NewHelp(m.keys.FullHelp())
+	m.screens["help"] = screens.NewHelp(m.keys.FullHelp(), m.theme)
 	m.screens["logs"] = screens.NewLogs(m.logs)
 }

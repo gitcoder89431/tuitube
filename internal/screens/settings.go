@@ -53,6 +53,7 @@ func (s Settings) View(width, height int) string {
 		row("Sidebar", fmt.Sprintf("%t", s.state.SidebarVisible)),
 		"",
 		rule("Build"),
+		"",
 		row("Version", s.state.Version),
 		row("Commit", s.state.Commit),
 		row("Date", s.state.Date),

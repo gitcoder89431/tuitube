@@ -6,34 +6,62 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/gitcoder89431/tui-tube/internal/theme"
 )
 
-type Help struct{ bindings [][]key.Binding }
+type Help struct {
+	bindings [][]key.Binding
+	theme    theme.Theme
+}
 
-func NewHelp(bindings [][]key.Binding) Help { return Help{bindings: bindings} }
+func NewHelp(bindings [][]key.Binding, t theme.Theme) Help {
+	return Help{bindings: bindings, theme: t}
+}
+
+func (h Help) WithTheme(t theme.Theme) Help {
+	h.theme = t
+	return h
+}
 
 func (h Help) Init() tea.Cmd { return nil }
 
 func (h Help) Update(msg tea.Msg) (Screen, tea.Cmd) { return h, nil }
 
 func (h Help) View(width, height int) string {
-	var b strings.Builder
-	b.WriteString("Help\n\nGlobal keys\n")
-	for _, group := range h.bindings {
-		for _, binding := range group {
-			help := binding.Help()
-			b.WriteString("  " + help.Key + "  " + help.Desc + "\n")
-		}
+	rule := func(label string) string {
+		labelW := lipgloss.Width(label)
+		fill := strings.Repeat("/", max(0, width-labelW-1))
+		return h.theme.Muted.Bold(true).Render(label) + h.theme.Muted.Render(" "+fill)
 	}
-	b.WriteString("\nNavigation keys\n")
-	b.WriteString("  up/k  move up in sidebar\n")
-	b.WriteString("  down/j  move down in sidebar\n")
-	b.WriteString("  enter  open selected sidebar item\n")
-	b.WriteString("\nCommand palette keys\n")
-	b.WriteString("  ctrl+k  open palette\n")
-	b.WriteString("  type  filter commands\n")
-	b.WriteString("  enter  run selected command\n")
-	b.WriteString("  esc  close palette\n")
+	row := func(keys, desc string) string {
+		return "  " + h.theme.Accent.Render(keys) + "  " + h.theme.Text.Render(desc) + "\n"
+	}
+
+	var b strings.Builder
+
+	b.WriteString(rule("Library") + "\n\n")
+	b.WriteString(row("enter", "play selected track (or pause if already playing)"))
+	b.WriteString(row("p", "pause / resume"))
+	b.WriteString(row("d", "download track to ~/Music/tuitube"))
+	b.WriteString(row("space", "toggle favorite"))
+	b.WriteString(row("f", "filter to favorites only"))
+	b.WriteString(row("/", "search — live filter, esc to clear"))
+	b.WriteString(row("j / k", "move down / up"))
+	b.WriteString("\n")
+
+	b.WriteString(rule("Playlists") + "\n\n")
+	b.WriteString(row("enter", "open playlist"))
+	b.WriteString(row("n", "create new playlist"))
+	b.WriteString(row("esc", "back to playlists from library"))
+	b.WriteString("\n")
+
+	b.WriteString(rule("Global") + "\n\n")
+	b.WriteString(row("ctrl+k", "command palette"))
+	b.WriteString(row("ctrl+t", "cycle theme"))
+	b.WriteString(row("tab", "focus sidebar / main"))
+	b.WriteString(row("?", "toggle this help"))
+	b.WriteString(row("q", "quit"))
+
 	return lipgloss.NewStyle().Width(width).Height(height).Render(b.String())
 }
 
