@@ -60,6 +60,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, lib.ReloadCmd()
 		}
 		return m, nil
+	case screens.TracksLoadedMsg:
+		// always route to library regardless of active screen (e.g. after esc back to playlists)
+		if lib, ok := m.screens["library"].(screens.Library); ok {
+			updated, cmd := lib.Update(msg)
+			m.screens["library"] = updated
+			return m, cmd
+		}
+		return m, nil
 	case screens.PlaylistsLoadedMsg:
 		// route directly to playlists screen regardless of which screen is active
 		if pl, ok := m.screens["playlists"].(screens.Playlists); ok {
