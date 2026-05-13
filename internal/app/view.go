@@ -42,10 +42,8 @@ func (m Model) View() tea.View {
 	switch m.visMode {
 	case screens.VisModeMatrix:
 		mainContent = screens.RenderMatrix(mainWidth, mainHeight, m.visFrame, m.theme)
-	case screens.VisModeBinary:
-		mainContent = screens.RenderBinary(mainWidth, mainHeight, m.visFrame, m.theme)
-	case screens.VisModeRain:
-		mainContent = screens.RenderRain(mainWidth, mainHeight, m.visFrame, m.theme)
+	case screens.VisModeRetro:
+		mainContent = screens.RenderRetro(mainWidth, mainHeight, m.visFrame, m.theme)
 	default:
 		mainContent = active.View(mainWidth, mainHeight)
 	}
