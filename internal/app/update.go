@@ -420,5 +420,5 @@ func (m *Model) updateDerivedScreens() {
 		Date:           m.meta.Date,
 	}, m.theme)
 	m.screens["help"] = screens.NewHelp(m.keys.FullHelp(), m.theme)
-	m.screens["logs"] = screens.NewLogs(m.logs)
+	m.screens["logs"] = screens.NewLogs(m.logs, m.theme)
 }

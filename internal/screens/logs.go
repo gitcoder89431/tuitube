@@ -4,19 +4,32 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gitcoder89431/tui-tube/internal/agentlog"
 	"github.com/gitcoder89431/tui-tube/internal/debug"
+	"github.com/gitcoder89431/tui-tube/internal/theme"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/bubbles/key"
 )
 
+type logLine struct {
+	text    string
+	isAgent bool
+}
+
 type Logs struct {
 	log    *debug.Log
+	theme  theme.Theme
 	offset int
 }
 
-func NewLogs(log *debug.Log) Logs {
-	return Logs{log: log}
+func NewLogs(log *debug.Log, t theme.Theme) Logs {
+	return Logs{log: log, theme: t}
+}
+
+func (l Logs) WithTheme(t theme.Theme) Logs {
+	l.theme = t
+	return l
 }
 
 func (l Logs) Init() tea.Cmd { return nil }
@@ -29,7 +42,8 @@ func (l Logs) Update(msg tea.Msg) (Screen, tea.Cmd) {
 				l.offset--
 			}
 		case "down", "j":
-			if l.offset < max(0, len(l.log.Entries())-1) {
+			lines := l.buildLines()
+			if l.offset < max(0, len(lines)-1) {
 				l.offset++
 			}
 		}
@@ -38,15 +52,49 @@ func (l Logs) Update(msg tea.Msg) (Screen, tea.Cmd) {
 }
 
 func (l Logs) View(width, height int) string {
-	lines := strings.Split(strings.TrimRight(l.content(), "\n"), "\n")
+	lines := l.buildLines()
 	if len(lines) == 0 {
-		return ""
+		return lipgloss.NewStyle().Width(width).Height(height).Render(
+			l.theme.Muted.Render("No activity yet."),
+		)
 	}
 	if l.offset > max(0, len(lines)-1) {
-		l.offset = max(0, len(lines)-1)
+		l.offset = 0
 	}
 	end := min(len(lines), l.offset+height)
-	return lipgloss.NewStyle().Width(width).Height(height).Render(strings.Join(lines[l.offset:end], "\n"))
+	var rendered []string
+	for _, line := range lines[l.offset:end] {
+		if line.isAgent {
+			rendered = append(rendered, l.theme.Accent.Render(line.text))
+		} else {
+			rendered = append(rendered, l.theme.Muted.Render(line.text))
+		}
+	}
+	return lipgloss.NewStyle().Width(width).Height(height).Render(strings.Join(rendered, "\n"))
+}
+
+func (l Logs) buildLines() []logLine {
+	var lines []logLine
+
+	// agent log — newest first
+	for _, e := range agentlog.Read() {
+		lines = append(lines, logLine{
+			text:    fmt.Sprintf("%s  agent  %s", e.Time.Format("15:04:05"), e.Message),
+			isAgent: true,
+		})
+	}
+
+	// app log — reverse so newest is near top
+	appEntries := l.log.Entries()
+	for i := len(appEntries) - 1; i >= 0; i-- {
+		e := appEntries[i]
+		lines = append(lines, logLine{
+			text:    fmt.Sprintf("%s  %-5s  %s", e.Time.Format("15:04:05"), e.Level, e.Message),
+			isAgent: false,
+		})
+	}
+
+	return lines
 }
 
 func (l Logs) Title() string { return "Logs" }
@@ -70,16 +118,4 @@ func max(a, b int) int {
 		return a
 	}
 	return b
-}
-
-func (l Logs) content() string {
-	entries := l.log.Entries()
-	if len(entries) == 0 {
-		return "No log entries yet."
-	}
-	var b strings.Builder
-	for _, entry := range entries {
-		b.WriteString(fmt.Sprintf("%s  %-5s  %s\n", entry.Time.Format("15:04:05"), entry.Level, entry.Message))
-	}
-	return b.String()
 }

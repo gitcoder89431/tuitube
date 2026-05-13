@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/gitcoder89431/tui-tube/internal/agentlog"
 	"github.com/gitcoder89431/tui-tube/internal/db"
 	"github.com/gitcoder89431/tui-tube/internal/player"
 	tubesync "github.com/gitcoder89431/tui-tube/internal/sync"
@@ -180,6 +181,9 @@ func (s *Server) syncStation(_ context.Context, _ mcp.CallToolRequest, args sync
 			return mcp.NewToolResultError("fts rebuild: " + err.Error()), nil
 		}
 	}
+	if total > 0 {
+		agentlog.Write(fmt.Sprintf("↻ synced %d new tracks", total))
+	}
 	return jsonResult(map[string]any{"total_inserted": total, "stations": results})
 }
 
@@ -223,6 +227,7 @@ func (s *Server) playTrack(_ context.Context, _ mcp.CallToolRequest, args playAr
 	if label == "" {
 		label = args.YoutubeID
 	}
+	agentlog.Write("▶ playing: " + label)
 	return mcp.NewToolResultText(fmt.Sprintf("now playing: %s", label)), nil
 }
 
@@ -232,6 +237,7 @@ func (s *Server) stopPlayback(_ context.Context, _ mcp.CallToolRequest, _ struct
 	if np == nil {
 		return mcp.NewToolResultText("nothing was playing"), nil
 	}
+	agentlog.Write("⏹ stopped: " + np.Title)
 	return mcp.NewToolResultText("stopped: " + np.Title), nil
 }
 
@@ -244,6 +250,7 @@ func (s *Server) toggleFavorite(_ context.Context, _ mcp.CallToolRequest, args t
 	if isFav {
 		state = "added to favorites"
 	}
+	agentlog.Write("♥ " + state + ": " + args.TrackID)
 	return mcp.NewToolResultText(state), nil
 }
 
@@ -260,6 +267,7 @@ func (s *Server) createPlaylist(_ context.Context, _ mcp.CallToolRequest, args c
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
+	agentlog.Write(fmt.Sprintf("♪ created playlist: %s (id=%d)", args.Name, id))
 	return jsonResult(map[string]any{"id": id, "name": args.Name})
 }
 
