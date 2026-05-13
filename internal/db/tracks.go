@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"encoding/json"
 	"strings"
 )
 
@@ -14,7 +13,6 @@ type Track struct {
 	SongTitle  string
 	Artist     string
 	IsFavorite bool
-	Tags       []string
 }
 
 func (db *DB) ListTracks(query string, favoritesOnly bool) ([]Track, error) {
@@ -28,8 +26,7 @@ func (db *DB) ListTracks(query string, favoritesOnly bool) ([]Track, error) {
 			SELECT t.id, t.youtube_id,
 			       COALESCE(NULLIF(t.song_title,''), t.raw_title),
 			       COALESCE(t.artist,''),
-			       CASE WHEN pt.track_id IS NOT NULL THEN 1 ELSE 0 END,
-			       COALESCE(t.tags,'')
+			       CASE WHEN pt.track_id IS NOT NULL THEN 1 ELSE 0 END
 			FROM tracks_fts fts
 			JOIN tracks t ON t.rowid = fts.rowid
 			LEFT JOIN playlist_tracks pt ON pt.track_id = t.id AND pt.playlist_id = ?
@@ -41,8 +38,7 @@ func (db *DB) ListTracks(query string, favoritesOnly bool) ([]Track, error) {
 			SELECT t.id, t.youtube_id,
 			       COALESCE(NULLIF(t.song_title,''), t.raw_title),
 			       COALESCE(t.artist,''),
-			       1,
-			       COALESCE(t.tags,'')
+			       1
 			FROM playlist_tracks pt
 			JOIN tracks t ON t.id = pt.track_id
 			WHERE pt.playlist_id = ?
@@ -53,8 +49,7 @@ func (db *DB) ListTracks(query string, favoritesOnly bool) ([]Track, error) {
 			SELECT t.id, t.youtube_id,
 			       COALESCE(NULLIF(t.song_title,''), t.raw_title),
 			       COALESCE(t.artist,''),
-			       CASE WHEN pt.track_id IS NOT NULL THEN 1 ELSE 0 END,
-			       COALESCE(t.tags,'')
+			       CASE WHEN pt.track_id IS NOT NULL THEN 1 ELSE 0 END
 			FROM tracks t
 			LEFT JOIN playlist_tracks pt ON pt.track_id = t.id AND pt.playlist_id = ?
 			ORDER BY t.published_at DESC
@@ -69,14 +64,10 @@ func (db *DB) ListTracks(query string, favoritesOnly bool) ([]Track, error) {
 	for rows.Next() {
 		var t Track
 		var isFav int
-		var tagsJSON string
-		if err := rows.Scan(&t.ID, &t.YoutubeID, &t.SongTitle, &t.Artist, &isFav, &tagsJSON); err != nil {
+		if err := rows.Scan(&t.ID, &t.YoutubeID, &t.SongTitle, &t.Artist, &isFav); err != nil {
 			return nil, err
 		}
 		t.IsFavorite = isFav == 1
-		if tagsJSON != "" {
-			json.Unmarshal([]byte(tagsJSON), &t.Tags)
-		}
 		tracks = append(tracks, t)
 	}
 	return tracks, rows.Err()

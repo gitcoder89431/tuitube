@@ -9,7 +9,6 @@ import (
 
 	"github.com/gitcoder89431/tui-tube/internal/app"
 	"github.com/gitcoder89431/tui-tube/internal/db"
-	"github.com/gitcoder89431/tui-tube/internal/enrich"
 	"github.com/gitcoder89431/tui-tube/internal/mcpserver"
 	tubesync "github.com/gitcoder89431/tui-tube/internal/sync"
 	tea "charm.land/bubbletea/v2"
@@ -53,8 +52,6 @@ func main() {
 		runAddStation(*dbPath, args[1:])
 	case "clean":
 		runClean(*dbPath)
-	case "enrich":
-		runEnrich(*dbPath, args[1:])
 	case "bootstrap":
 		runBootstrap(*dbPath, args[1:])
 	case "mcp":
@@ -64,30 +61,6 @@ func main() {
 	default:
 		fmt.Fprintf(os.Stderr, "tuitube: unknown subcommand %q\n", subcommand)
 		fmt.Fprintln(os.Stderr, "usage: tuitube [sync | add-station | clean | bootstrap | mcp]")
-		os.Exit(1)
-	}
-}
-
-func runEnrich(dbPath string, args []string) {
-	fs := flag.NewFlagSet("enrich", flag.ExitOnError)
-	apiKey := fs.String("key", os.Getenv("LASTFM_KEY"), "Last.fm API key (or set LASTFM_KEY env var)")
-	fs.Parse(args)
-
-	if *apiKey == "" {
-		fmt.Fprintln(os.Stderr, "tuitube enrich: --key or LASTFM_KEY required")
-		fmt.Fprintln(os.Stderr, "  get a free key at: https://www.last.fm/api/account/create")
-		os.Exit(1)
-	}
-
-	database, err := db.Open(dbPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "tuitube enrich: %v\n", err)
-		os.Exit(1)
-	}
-	defer database.Close()
-
-	if err := enrich.Run(database, *apiKey, os.Stdout); err != nil {
-		fmt.Fprintf(os.Stderr, "tuitube enrich: %v\n", err)
 		os.Exit(1)
 	}
 }
