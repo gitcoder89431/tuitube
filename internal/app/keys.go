@@ -23,6 +23,7 @@ type KeyMap struct {
 	CycleTheme   key.Binding
 	SeekForward  key.Binding
 	SeekBackward key.Binding
+	Next         key.Binding
 }
 
 func DefaultKeyMap() KeyMap {
@@ -40,6 +41,7 @@ func DefaultKeyMap() KeyMap {
 		CycleTheme:   key.NewBinding(key.WithKeys("ctrl+t"), key.WithHelp("ctrl+t", "cycle theme")),
 		SeekForward:  key.NewBinding(key.WithKeys("right"), key.WithHelp("→", "+5s")),
 		SeekBackward: key.NewBinding(key.WithKeys("left"), key.WithHelp("←", "-5s")),
+		Next:         key.NewBinding(key.WithKeys("n"), key.WithHelp("n", "next")),
 	}
 }
 

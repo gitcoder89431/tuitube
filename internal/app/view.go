@@ -93,7 +93,7 @@ var staticTitles = map[string]string{
 
 func (m Model) footerBindings(active screens.Screen) []key.Binding {
 	screenKeys := active.KeyBindings()
-	globals := []key.Binding{m.keys.SeekBackward, m.keys.SeekForward, m.keys.Visualizer, m.keys.Help, m.keys.Quit}
+	globals := []key.Binding{m.keys.Next, m.keys.SeekBackward, m.keys.SeekForward, m.keys.Visualizer, m.keys.Help, m.keys.Quit}
 	return append(screenKeys, globals...)
 }
 

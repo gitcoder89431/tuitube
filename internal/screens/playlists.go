@@ -77,7 +77,8 @@ func (s Playlists) Update(msg tea.Msg) (Screen, tea.Cmd) {
 }
 
 func (s Playlists) CapturesKey(msg tea.KeyPressMsg) bool {
-	return s.creating
+	// claim n so global "next song" doesn't fire when on the playlists screen
+	return s.creating || msg.String() == "n"
 }
 
 func (s Playlists) handleKey(msg tea.KeyPressMsg) (Screen, tea.Cmd) {
