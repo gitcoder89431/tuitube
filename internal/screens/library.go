@@ -439,10 +439,6 @@ func (l Library) Title() string {
 
 func (l Library) KeyBindings() []key.Binding {
 	return []key.Binding{
-		key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "pause")),
-		key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "download")),
-		key.NewBinding(key.WithKeys("space"), key.WithHelp("␣", "favorite")),
-		key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "favorites")),
 		key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
 	}
 }

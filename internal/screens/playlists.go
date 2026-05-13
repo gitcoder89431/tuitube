@@ -199,12 +199,7 @@ func (s Playlists) View(width, height int) string {
 
 func (s Playlists) Title() string { return "Playlists" }
 
-func (s Playlists) KeyBindings() []key.Binding {
-	return []key.Binding{
-		key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
-		key.NewBinding(key.WithKeys("n"), key.WithHelp("n", "new playlist")),
-	}
-}
+func (s Playlists) KeyBindings() []key.Binding { return nil }
 
 func (s Playlists) loadCmd() tea.Cmd {
 	database := s.database
