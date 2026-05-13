@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gitcoder89431/tui-tube/internal/agentlog"
 	"github.com/gitcoder89431/tui-tube/internal/app"
 	"github.com/gitcoder89431/tui-tube/internal/db"
 	"github.com/gitcoder89431/tui-tube/internal/mcpserver"
@@ -130,6 +131,7 @@ func autoMerge(dbPath string) {
 }
 
 func runTUI(dbPath string) {
+	agentlog.Clear() // fresh log each TUI session
 	autoMerge(dbPath)
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
 		fmt.Fprintf(os.Stderr, "tuitube: %v\n", err)

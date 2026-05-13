@@ -24,6 +24,11 @@ func Path() string {
 }
 
 // Write appends a single agent log entry.
+// Clear wipes the agent log — call on TUI startup so each session is fresh.
+func Clear() {
+	_ = os.Remove(Path())
+}
+
 func Write(message string) {
 	p := Path()
 	_ = os.MkdirAll(filepath.Dir(p), 0755)
