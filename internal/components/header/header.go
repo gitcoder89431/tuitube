@@ -50,7 +50,11 @@ func View(m Model, width, height int, t theme.Theme) string {
 			if len(runes) > maxLabelW {
 				label = string(runes[:maxLabelW-1]) + "…"
 			}
-			center = sep + t.Accent.Render(label) + t.Muted.Render(progress)
+			progressRender := ""
+			if m.Duration > 0 {
+				progressRender = t.Muted.Render("  |  ") + t.Info.Render(fmtTime(m.TimePos)+"/"+fmtTime(m.Duration))
+			}
+			center = sep + t.Accent.Render(label) + progressRender
 		}
 	}
 
