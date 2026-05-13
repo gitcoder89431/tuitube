@@ -10,6 +10,8 @@ require (
 	github.com/elpdev/tuimod v0.1.0
 	github.com/elpdev/tuipalette v0.2.0
 	github.com/elpdev/tuitheme v0.2.2
+	github.com/mark3labs/mcp-go v0.52.0
+	modernc.org/sqlite v1.50.0
 )
 
 require (
@@ -25,7 +27,6 @@ require (
 	github.com/google/jsonschema-go v0.4.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect
-	github.com/mark3labs/mcp-go v0.52.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.23 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
@@ -42,5 +43,4 @@ require (
 	modernc.org/libc v1.72.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.50.0 // indirect
 )

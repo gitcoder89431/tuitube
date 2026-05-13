@@ -1,21 +1,20 @@
 version: 2
 
-project_name: tui-tube
+project_name: tuitube
 
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - id: tui-tube
-    main: ./cmd/tui-tube
-    binary: tui-tube
+  - id: tuitube
+    main: ./cmd/tuitube
+    binary: tuitube
     env:
       - CGO_ENABLED=0
     goos:
       - linux
       - darwin
-      - windows
     goarch:
       - amd64
       - arm64
@@ -29,10 +28,10 @@ archives:
   - id: default
     formats:
       - tar.gz
-    format_overrides:
-      - goos: windows
-        formats:
-          - zip
+    files:
+      - catalog.db
+      - README.md
+      - ONBOARDING.md
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
@@ -46,4 +45,9 @@ snapshot:
   version_template: "{{ incpatch .Version }}-next"
 
 changelog:
-  sort: asc
+  sort: desc
+  filters:
+    exclude:
+      - "^chore:"
+      - "^docs:"
+      - "^test:"
