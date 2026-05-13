@@ -164,7 +164,7 @@ func (s Playlists) View(width, height int) string {
 		if e.isHeader {
 			labelW := lipgloss.Width(e.label)
 			fill := strings.Repeat("/", max(0, width-labelW-1))
-			line := s.theme.Muted.Bold(true).Render(e.label) + s.theme.Muted.Render(" "+fill)
+			line := s.theme.Title.Render(e.label) + s.theme.Muted.Render(" "+fill)
 			lines = append(lines, line)
 			continue
 		}

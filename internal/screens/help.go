@@ -31,7 +31,7 @@ func (h Help) View(width, height int) string {
 	rule := func(label string) string {
 		labelW := lipgloss.Width(label)
 		fill := strings.Repeat("/", max(0, width-labelW-1))
-		return h.theme.Muted.Bold(true).Render(label) + h.theme.Muted.Render(" "+fill)
+		return h.theme.Title.Render(label) + h.theme.Muted.Render(" "+fill)
 	}
 	row := func(keys, desc string) string {
 		return "  " + h.theme.Accent.Render(keys) + "  " + h.theme.Text.Render(desc) + "\n"
