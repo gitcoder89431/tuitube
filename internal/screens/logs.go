@@ -2,7 +2,9 @@ package screens
 
 import (
 	"fmt"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/gitcoder89431/tui-tube/internal/agentlog"
 	"github.com/gitcoder89431/tui-tube/internal/debug"
@@ -73,27 +75,43 @@ func (l Logs) View(width, height int) string {
 	return lipgloss.NewStyle().Width(width).Height(height).Render(strings.Join(rendered, "\n"))
 }
 
+type timedLine struct {
+	t       time.Time
+	logLine logLine
+}
+
 func (l Logs) buildLines() []logLine {
-	var lines []logLine
+	var all []timedLine
 
-	// agent log — newest first
 	for _, e := range agentlog.Read() {
-		lines = append(lines, logLine{
-			text:    fmt.Sprintf("%s  agent  %s", e.Time.Format("15:04:05"), e.Message),
-			isAgent: true,
+		all = append(all, timedLine{
+			t: e.Time,
+			logLine: logLine{
+				text:    fmt.Sprintf("%s  agent  %s", e.Time.Format("15:04:05"), e.Message),
+				isAgent: true,
+			},
 		})
 	}
 
-	// app log — reverse so newest is near top
-	appEntries := l.log.Entries()
-	for i := len(appEntries) - 1; i >= 0; i-- {
-		e := appEntries[i]
-		lines = append(lines, logLine{
-			text:    fmt.Sprintf("%s  %-5s  %s", e.Time.Format("15:04:05"), e.Level, e.Message),
-			isAgent: false,
+	for _, e := range l.log.Entries() {
+		all = append(all, timedLine{
+			t: e.Time,
+			logLine: logLine{
+				text:    fmt.Sprintf("%s  %-5s  %s", e.Time.Format("15:04:05"), e.Level, e.Message),
+				isAgent: false,
+			},
 		})
 	}
 
+	// sort newest first
+	sort.Slice(all, func(i, j int) bool {
+		return all[i].t.After(all[j].t)
+	})
+
+	lines := make([]logLine, len(all))
+	for i, tl := range all {
+		lines[i] = tl.logLine
+	}
 	return lines
 }
 
