@@ -189,3 +189,40 @@ The MCP server (`tuitube mcp`) exposes 11 tools. Key ones for agents:
 - `sync_station` — returns per-station inserted counts and sync log
 
 Before doing CLI work, run `tuitube doctor` to verify dependencies are healthy.
+
+## Release Workflow (cutting a new version)
+
+When you've synced new channels or curated more playlists:
+
+```bash
+# 1. sync any channels with new uploads
+tuitube sync
+
+# 2. export the catalog from your working DB
+SRC=~/.local/share/tuitube/tuitube.db ./scripts/export_catalog.sh
+
+# 3. commit catalog.db and tag
+git add catalog.db && git commit -m "catalog: update to $(date +%Y%m%d)"
+git tag v0.x.0 && git push && git push origin v0.x.0
+```
+
+GoReleaser builds the binaries and attaches `catalog.db` automatically on tag push.
+
+## Updating Your Own Install
+
+After pulling a new version or syncing channels:
+
+```bash
+# if you moved your DB to the default location already
+tuitube sync
+
+# if you're still pointing at the repo DB
+tuitube --db ~/REPOS/tui-tube/tui-tube.db sync
+```
+
+The default DB location is `~/.local/share/tuitube/tuitube.db`. Copy it there once and `tuitube` needs no flags:
+
+```bash
+mkdir -p ~/.local/share/tuitube
+cp ~/REPOS/tui-tube/tui-tube.db ~/.local/share/tuitube/tuitube.db
+```
