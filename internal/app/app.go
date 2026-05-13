@@ -45,6 +45,8 @@ type Model struct {
 	database *db.DB
 
 	nowPlaying  *player.State
+	timePos     float64
+	duration    float64
 	queue       []db.Track
 	queuePos    int
 	downloading map[string]bool

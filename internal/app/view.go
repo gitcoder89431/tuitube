@@ -28,6 +28,8 @@ func (m Model) View() tea.View {
 		ScreenTitle: active.Title(),
 		Version:     m.meta.Version,
 		NowPlaying:  m.nowPlaying,
+		TimePos:     m.timePos,
+		Duration:    m.duration,
 	}, dims.Header.Width, dims.Header.Height, m.theme)
 
 	foot := footer.View(m.footerBindings(active), dims.Footer.Width, dims.Footer.Height, m.theme)

@@ -138,6 +138,14 @@ func writeState(s State) error {
 	return os.WriteFile(StatePath, data, 0644)
 }
 
+// Progress returns the current playback position and total duration in seconds.
+// Returns zeros if mpv isn't running or the query fails.
+func Progress() (timePos, duration float64) {
+	timePos, _ = queryIPCFloat(`{"command":["get_property","time-pos"]}`)
+	duration, _ = queryIPCFloat(`{"command":["get_property","duration"]}`)
+	return
+}
+
 func sendIPC(cmd string) error {
 	conn, err := net.DialTimeout("unix", SocketPath, 200*time.Millisecond)
 	if err != nil {
@@ -146,4 +154,31 @@ func sendIPC(cmd string) error {
 	defer conn.Close()
 	_, err = conn.Write([]byte(cmd + "\n"))
 	return err
+}
+
+func queryIPCFloat(cmd string) (float64, error) {
+	conn, err := net.DialTimeout("unix", SocketPath, 200*time.Millisecond)
+	if err != nil {
+		return 0, err
+	}
+	defer conn.Close()
+	conn.SetDeadline(time.Now().Add(300 * time.Millisecond))
+	if _, err := conn.Write([]byte(cmd + "\n")); err != nil {
+		return 0, err
+	}
+	buf := make([]byte, 256)
+	n, err := conn.Read(buf)
+	if err != nil {
+		return 0, err
+	}
+	var resp struct {
+		Data  json.RawMessage `json:"data"`
+		Error string          `json:"error"`
+	}
+	if err := json.Unmarshal(buf[:n], &resp); err != nil {
+		return 0, err
+	}
+	var val float64
+	json.Unmarshal(resp.Data, &val)
+	return val, nil
 }

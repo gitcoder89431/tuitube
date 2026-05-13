@@ -41,6 +41,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.playNextInQueue()
 		}
 		m.nowPlaying = state
+		if state != nil && state.Playing && !state.Paused {
+			m.timePos, m.duration = player.Progress()
+		}
 		m.syncNowPlayingToLibrary()
 		return m, nowPlayingTick()
 	case screens.BackMsg:
