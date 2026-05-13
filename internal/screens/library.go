@@ -118,7 +118,11 @@ func (l Library) Update(msg tea.Msg) (Screen, tea.Cmd) {
 			l.err = msg.Err
 			return l, nil
 		}
-		l.tracks = msg.Tracks
+		if msg.Tracks == nil {
+			l.tracks = []db.Track{} // empty result, not loading
+		} else {
+			l.tracks = msg.Tracks
+		}
 		l.cursor = clamp(l.cursor, 0, max(0, len(l.tracks)-1))
 		return l, nil
 
@@ -250,6 +254,12 @@ func (l Library) View(width, height int) string {
 	}
 	if l.tracks == nil {
 		return lipgloss.NewStyle().Width(width).Height(height).Render("loading...")
+	}
+	if len(l.tracks) == 0 && l.searchQuery != "" {
+		msg := l.theme.Muted.Render(fmt.Sprintf("no results for %q — backspace to edit, esc to clear", l.searchQuery))
+		body := lipgloss.NewStyle().Width(width).Height(height - 2).Render(msg)
+		bar := l.theme.Border.Render(strings.Repeat("─", width)) + "\n" + l.searchBar(width)
+		return body + "\n" + bar
 	}
 
 	favW := 2
