@@ -46,121 +46,119 @@ func (db *DB) CatalogVersion() string {
 	return v
 }
 
+// MergeResult summarises what changed during a catalog merge.
+type MergeResult struct {
+	NewStations int
+	NewTracks   int
+	NewPlaylists int
+	CatalogVersion string
+}
+
 // MergeCatalog attaches catalogPath and merges any new stations and tracks
 // into the user DB. Existing rows (matched by youtube_id / station id) are
 // left untouched so user data is never overwritten.
 func (db *DB) MergeCatalog(catalogPath string) error {
-	// read catalog version before attaching
+	_, err := db.MergeCatalogFull(catalogPath, false)
+	return err
+}
+
+// MergeCatalogFull merges the catalog and returns a summary of changes.
+// Pass dryRun=true to see what would change without writing anything.
+func (db *DB) MergeCatalogFull(catalogPath string, dryRun bool) (MergeResult, error) {
+	var result MergeResult
+
 	catConn, err := Open(catalogPath)
 	if err != nil {
-		return fmt.Errorf("open catalog: %w", err)
+		return result, fmt.Errorf("open catalog: %w", err)
 	}
 	catVersion := catConn.CatalogVersion()
 	catConn.Close()
 
 	if catVersion == "" {
-		return fmt.Errorf("catalog has no version — may be corrupt")
+		return result, fmt.Errorf("catalog has no version — may be corrupt")
+	}
+	result.CatalogVersion = catVersion
+
+	if dryRun {
+		// count what would change without writing
+		tmpConn, err := Open(catalogPath)
+		if err != nil {
+			return result, err
+		}
+		defer tmpConn.Close()
+		tmpConn.conn.QueryRow("SELECT COUNT(*) FROM stations").Scan(&result.NewStations)
+		tmpConn.conn.QueryRow("SELECT COUNT(*) FROM tracks").Scan(&result.NewTracks)
+		return result, nil
 	}
 
 	_, err = db.conn.Exec(fmt.Sprintf(`ATTACH DATABASE '%s' AS cat`, catalogPath))
 	if err != nil {
-		return fmt.Errorf("attach catalog: %w", err)
+		return result, fmt.Errorf("attach catalog: %w", err)
 	}
 	defer db.conn.Exec("DETACH DATABASE cat")
 
-	_, err = db.conn.Exec(`
-		-- ensure catalog tables exist in user DB
-		CREATE TABLE IF NOT EXISTS stations (
-			id                  TEXT PRIMARY KEY,
-			name                TEXT NOT NULL,
-			description         TEXT,
-			color               TEXT,
-			youtube_channel_id  TEXT NOT NULL,
-			uploads_playlist_id TEXT NOT NULL,
-			last_synced         INTEGER,
-			created_at          INTEGER
-		);
-		CREATE TABLE IF NOT EXISTS tracks (
-			id          TEXT PRIMARY KEY,
-			station_id  TEXT NOT NULL REFERENCES stations(id),
-			youtube_id  TEXT NOT NULL UNIQUE,
-			song_title  TEXT,
-			artist      TEXT,
-			raw_title   TEXT NOT NULL,
-			search_text TEXT,
-			thumbnail   TEXT,
-			published_at INTEGER,
-			created_at  INTEGER
-		);
-		CREATE INDEX IF NOT EXISTS tracks_station_idx   ON tracks(station_id);
-		CREATE INDEX IF NOT EXISTS tracks_published_idx ON tracks(published_at DESC);
-		CREATE INDEX IF NOT EXISTS tracks_youtube_id_idx ON tracks(youtube_id);
-		CREATE VIRTUAL TABLE IF NOT EXISTS tracks_fts USING fts5(
-			song_title, artist, raw_title,
-			content='tracks', content_rowid='rowid'
-		);
-	`)
-	if err != nil {
-		return fmt.Errorf("ensure tables: %w", err)
+	if err := db.InitUserDB(); err != nil {
+		return result, fmt.Errorf("ensure tables: %w", err)
 	}
+
+	// count new stations before insert
+	db.conn.QueryRow(`SELECT COUNT(*) FROM cat.stations WHERE id NOT IN (SELECT id FROM stations)`).Scan(&result.NewStations)
+	db.conn.QueryRow(`SELECT COUNT(*) FROM cat.tracks WHERE youtube_id NOT IN (SELECT youtube_id FROM tracks)`).Scan(&result.NewTracks)
 
 	_, err = db.conn.Exec(`
 		INSERT OR IGNORE INTO stations SELECT * FROM cat.stations;
 		INSERT OR IGNORE INTO tracks   SELECT * FROM cat.tracks;
 	`)
 	if err != nil {
-		return fmt.Errorf("merge data: %w", err)
+		return result, fmt.Errorf("merge data: %w", err)
 	}
 
-	// rebuild FTS over merged tracks
-	db.conn.Exec("INSERT INTO tracks_fts(tracks_fts) VALUES('rebuild')")
-
-	// seed demo playlists — only if they don't already exist by name
-	if err := db.seedDemoPlaylists(); err != nil {
-		return fmt.Errorf("seed demo playlists: %w", err)
+	if result.NewTracks > 0 {
+		db.conn.Exec("INSERT INTO tracks_fts(tracks_fts) VALUES('rebuild')")
 	}
 
-	// record the version we just merged
+	newPL, _ := db.seedDemoPlaylists()
+	result.NewPlaylists = newPL
+
 	_, err = db.conn.Exec(
 		"INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
 		catalogVersionKey, catVersion,
 	)
-	return err
+	return result, err
 }
 
 // seedDemoPlaylists reads demo_playlists from the attached catalog and creates
 // any that don't already exist in the user's playlists table.
-func (db *DB) seedDemoPlaylists() error {
+func (db *DB) seedDemoPlaylists() (int, error) {
 	// check if catalog has demo tables
 	var n int
 	err := db.conn.QueryRow(
 		"SELECT COUNT(*) FROM cat.sqlite_master WHERE type='table' AND name='demo_playlists'",
 	).Scan(&n)
 	if err != nil || n == 0 {
-		return nil // older catalog, no demo playlists
+		return 0, nil // older catalog, no demo playlists
 	}
 
 	rows, err := db.conn.Query("SELECT name FROM cat.demo_playlists")
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer rows.Close()
 
+	created := 0
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {
-			return err
+			return created, err
 		}
-		// skip if user already has a playlist with this name
 		var count int
 		db.conn.QueryRow("SELECT COUNT(*) FROM playlists WHERE name=?", name).Scan(&count)
 		if count > 0 {
 			continue
 		}
-		// create playlist and add its tracks
 		res, err := db.conn.Exec("INSERT INTO playlists (name) VALUES (?)", name)
 		if err != nil {
-			return err
+			return created, err
 		}
 		pid, _ := res.LastInsertId()
 		_, err = db.conn.Exec(`
@@ -170,10 +168,11 @@ func (db *DB) seedDemoPlaylists() error {
 			WHERE dpt.playlist_name = ?
 		`, pid, name)
 		if err != nil {
-			return err
+			return created, err
 		}
+		created++
 	}
-	return rows.Err()
+	return created, rows.Err()
 }
 
 // DefaultCatalogPath returns the system catalog path, falling back to a local
