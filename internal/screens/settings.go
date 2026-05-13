@@ -40,7 +40,7 @@ func (s Settings) View(width, height int) string {
 	rule := func(label string) string {
 		labelW := lipgloss.Width(label)
 		fill := strings.Repeat("/", max(0, width-labelW-1))
-		return s.theme.Title.Render(label) + s.theme.Muted.Render(" "+fill)
+		return s.theme.Title.Render(label) + s.theme.PaletteAccent.Render(" "+fill)
 	}
 	row := func(label, value string) string {
 		return s.theme.Muted.Render(label+": ") + s.theme.Text.Render(value)

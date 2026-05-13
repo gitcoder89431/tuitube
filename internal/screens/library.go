@@ -297,7 +297,7 @@ func (l Library) headerRow(titleW, artistW, width int) string {
 	rule := func(label string, colW int) string {
 		labelW := lipgloss.Width(label)
 		fill := strings.Repeat("/", max(0, colW-labelW-1))
-		return l.theme.Title.Render(label) + l.theme.Muted.Render(" "+fill)
+		return l.theme.Title.Render(label) + l.theme.PaletteAccent.Render(" "+fill)
 	}
 	return "  " + rule("Song", titleW) + "  " + rule("Artist", artistW)
 }

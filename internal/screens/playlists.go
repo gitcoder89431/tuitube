@@ -164,7 +164,7 @@ func (s Playlists) View(width, height int) string {
 		if e.isHeader {
 			labelW := lipgloss.Width(e.label)
 			fill := strings.Repeat("/", max(0, width-labelW-1))
-			line := s.theme.Title.Render(e.label) + s.theme.Muted.Render(" "+fill)
+			line := s.theme.Title.Render(e.label) + s.theme.PaletteAccent.Render(" "+fill)
 			lines = append(lines, line)
 			continue
 		}
@@ -232,7 +232,8 @@ func buildEntries(playlists []db.Playlist, stations []db.StationSummary, databas
 	var entries []playlistEntry
 
 	// favorites first (playlist id=1), then other user playlists
-	var userPlaylists []db.Playlist
+	entries = append(entries, playlistEntry{label: "Your Playlists", isHeader: true})
+
 	for _, p := range playlists {
 		if p.ID == 1 {
 			entries = append(entries, playlistEntry{
@@ -242,24 +243,26 @@ func buildEntries(playlists []db.Playlist, stations []db.StationSummary, databas
 					return database.ListPlaylistTracks(1)
 				},
 			})
-		} else {
+		}
+	}
+
+	var userPlaylists []db.Playlist
+	for _, p := range playlists {
+		if p.ID != 1 {
 			userPlaylists = append(userPlaylists, p)
 		}
 	}
 
-	if len(userPlaylists) > 0 {
-		entries = append(entries, playlistEntry{label: "Your Playlists", isHeader: true})
-		for _, p := range userPlaylists {
-			pid := p.ID
-			pname := p.Name
-			entries = append(entries, playlistEntry{
-				label: pname,
-				count: p.TrackCount,
-				loader: func() ([]db.Track, error) {
-					return database.ListPlaylistTracks(pid)
-				},
-			})
-		}
+	for _, p := range userPlaylists {
+		pid := p.ID
+		pname := p.Name
+		entries = append(entries, playlistEntry{
+			label: pname,
+			count: p.TrackCount,
+			loader: func() ([]db.Track, error) {
+				return database.ListPlaylistTracks(pid)
+			},
+		})
 	}
 
 	if len(stations) > 0 {
