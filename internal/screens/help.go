@@ -58,6 +58,7 @@ func (h Help) View(width, height int) string {
 	b.WriteString(rule("Global") + "\n\n")
 	b.WriteString(row("ctrl+k", "command palette"))
 	b.WriteString(row("ctrl+t", "cycle theme"))
+	b.WriteString(row("v", "visualizer — matrix / synthwave"))
 	b.WriteString(row("tab", "focus sidebar / main"))
 	b.WriteString(row("?", "toggle this help"))
 	b.WriteString(row("q", "quit"))

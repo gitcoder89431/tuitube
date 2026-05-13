@@ -10,6 +10,7 @@ import (
 	"github.com/gitcoder89431/tui-tube/internal/commands"
 	"github.com/gitcoder89431/tui-tube/internal/player"
 	"github.com/gitcoder89431/tui-tube/internal/screens"
+	"github.com/gitcoder89431/tui-tube/internal/theme"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/elpdev/tuimod"
@@ -180,6 +181,16 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
+	case key.Matches(msg, m.keys.CycleTheme):
+		themes := theme.BuiltIns()
+		for i, t := range themes {
+			if t.Name == m.theme.Name {
+				m.theme = themes[(i+1)%len(themes)]
+				break
+			}
+		}
+		m.updateDerivedScreens()
+		return m, nil
 	case key.Matches(msg, m.keys.Visualizer):
 		m.visMode = m.visMode.Next()
 		if m.visMode != screens.VisModeOff {

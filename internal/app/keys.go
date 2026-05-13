@@ -20,6 +20,7 @@ type KeyMap struct {
 	Down       key.Binding
 	Enter      key.Binding
 	Visualizer key.Binding
+	CycleTheme key.Binding
 }
 
 func DefaultKeyMap() KeyMap {
@@ -33,7 +34,8 @@ func DefaultKeyMap() KeyMap {
 		Up:        key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("up/k", "up")),
 		Down:      key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("down/j", "down")),
 		Enter:      key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
-		Visualizer: key.NewBinding(key.WithKeys("v"), key.WithHelp("v", "visualizer cycle")),
+		Visualizer:  key.NewBinding(key.WithKeys("v"), key.WithHelp("v", "visualizer")),
+		CycleTheme:  key.NewBinding(key.WithKeys("ctrl+t"), key.WithHelp("ctrl+t", "cycle theme")),
 	}
 }
 
