@@ -25,7 +25,9 @@ func Path() string {
 
 // Write appends a single agent log entry.
 func Write(message string) {
-	f, err := os.OpenFile(Path(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	p := Path()
+	_ = os.MkdirAll(filepath.Dir(p), 0755)
+	f, err := os.OpenFile(p, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return
 	}
