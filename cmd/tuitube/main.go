@@ -230,30 +230,32 @@ func autoMerge(dbPath string) {
 	if _, err := os.Stat(catalogPath); err != nil {
 		return // no catalog installed, skip
 	}
-	database, err := db.Open(dbPath)
-	if err != nil {
-		return
-	}
-	defer database.Close()
-
 	cat, err := db.Open(catalogPath)
 	if err != nil {
 		return
 	}
 	catVersion := cat.CatalogVersion()
 	cat.Close()
+	if catVersion == "" {
+		return
+	}
 
-	if catVersion == "" || catVersion == database.CatalogVersion() {
+	userDB, err := db.Open(dbPath)
+	if err != nil {
+		return
+	}
+	defer userDB.Close()
+
+	if catVersion == userDB.CatalogVersion() {
 		return // already up to date
 	}
 
-	_ = database.InitUserDB()
-	_ = database.MergeCatalog(catalogPath)
+	_ = userDB.InitUserDB()
+	_ = userDB.MergeCatalog(catalogPath)
 }
 
 func runTUI(dbPath string) {
 	agentlog.Clear() // fresh log each TUI session
-	autoMerge(dbPath)
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
 		fmt.Fprintf(os.Stderr, "tuitube: %v\n", err)
 		os.Exit(1)
@@ -264,6 +266,12 @@ func runTUI(dbPath string) {
 		os.Exit(1)
 	}
 	defer database.Close()
+	// ensure tables exist — covers first run before bootstrap
+	if err := database.InitUserDB(); err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube: init db: %v\n", err)
+		os.Exit(1)
+	}
+	autoMerge(dbPath)
 
 	meta := app.BuildInfo{Version: version, Commit: commit, Date: date}
 	program := tea.NewProgram(app.New(meta, database))
