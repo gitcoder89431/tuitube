@@ -43,7 +43,7 @@ func (h Help) View(width, height int) string {
 	b.WriteString(row("enter", "play selected track (or pause if already playing)"))
 	b.WriteString(row("p", "pause / resume"))
 	b.WriteString(row("d", "download track to ~/Music/tuitube"))
-	b.WriteString(row("space", "toggle favorite"))
+	b.WriteString(row("␣", "toggle favorite"))
 	b.WriteString(row("f", "filter to favorites only"))
 	b.WriteString(row("/", "search — live filter, esc to clear"))
 	b.WriteString(row("j / k", "move down / up"))
