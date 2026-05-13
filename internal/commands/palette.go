@@ -75,7 +75,7 @@ func (m *PaletteModel) ClearAction() {
 
 func (m *PaletteModel) rebuildInner() {
 	m.inner = tuipalette.NewPaletteModel(m.registry, tuipalette.Options{
-		Title:              "My App",
+		Title:              "tuitube",
 		Placeholder:        "type a command...",
 		Modules:            []string{ModuleHome, ModuleSettings, ModuleHelp, ModuleLogs, ModuleGlobal},
 		ReservedNamespaces: []string{ModuleHome, ModuleSettings, ModuleHelp, ModuleLogs},
@@ -143,7 +143,7 @@ func newThemePage(themes []theme.Theme, original string) tuipalette.SelectPage {
 		items = append(items, tuipalette.SelectItem{Label: candidate.Name, Current: current, Value: candidate})
 	}
 	return tuipalette.NewSelectPage(tuipalette.SelectPageOptions{
-		Title:       "My App / Themes",
+		Title:       "tuitube / Themes",
 		Subtitle:    "Move to preview, enter to select, esc to go back.",
 		Items:       items,
 		Selected:    selected,
