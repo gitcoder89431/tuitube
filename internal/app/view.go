@@ -24,7 +24,7 @@ func (m Model) View() tea.View {
 	active := m.screens[m.activeScreen]
 
 	head := header.View(header.Model{
-		AppName:     "tui-tube",
+		AppName:     "tuitube",
 		ScreenTitle: active.Title(),
 		Version:     m.meta.Version,
 		NowPlaying:  m.nowPlaying,
