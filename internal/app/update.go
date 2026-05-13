@@ -189,6 +189,10 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
+	case key.Matches(msg, m.keys.Sidebar):
+		m.showSidebar = !m.showSidebar
+		m.updateDerivedScreens()
+		return m, nil
 	case key.Matches(msg, m.keys.Next):
 		return m, m.playNextInQueue()
 	case key.Matches(msg, m.keys.SeekForward):

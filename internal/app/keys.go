@@ -24,6 +24,7 @@ type KeyMap struct {
 	SeekForward  key.Binding
 	SeekBackward key.Binding
 	Next         key.Binding
+	Sidebar      key.Binding
 }
 
 func DefaultKeyMap() KeyMap {
@@ -42,6 +43,7 @@ func DefaultKeyMap() KeyMap {
 		SeekForward:  key.NewBinding(key.WithKeys("right"), key.WithHelp("→", "+5s")),
 		SeekBackward: key.NewBinding(key.WithKeys("left"), key.WithHelp("←", "-5s")),
 		Next:         key.NewBinding(key.WithKeys("n"), key.WithHelp("n", "next")),
+		Sidebar:      key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "sidebar")),
 	}
 }
 

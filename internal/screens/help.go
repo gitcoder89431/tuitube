@@ -57,6 +57,7 @@ func (h Help) View(width, height int) string {
 		rule("Global"),
 		row("ctrl+k", "command palette"),
 		row("ctrl+t", "cycle theme"),
+		row("s", "toggle sidebar"),
 		row("tab", "focus sidebar / main"),
 		row("q", "quit"),
 	}
