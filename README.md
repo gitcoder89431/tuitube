@@ -1,5 +1,7 @@
 # tuitube
 
+![tuitube demo](demo.gif)
+
 A terminal music player for curated YouTube channels. Syncs channels once via yt-dlp into a local SQLite library — search is instant, offline, and never hits an API. Streams via mpv and exposes an MCP server so Claude can control playback and curate playlists.
 
 ## Features
