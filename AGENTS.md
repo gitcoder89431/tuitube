@@ -217,12 +217,12 @@ After pulling a new version or syncing channels:
 tuitube sync
 
 # if you're still pointing at the repo DB
-tuitube --db ~/REPOS/tui-tube/tui-tube.db sync
+tuitube sync
 ```
 
 The default DB location is `~/.local/share/tuitube/tuitube.db`. Copy it there once and `tuitube` needs no flags:
 
 ```bash
 mkdir -p ~/.local/share/tuitube
-cp ~/REPOS/tui-tube/tui-tube.db ~/.local/share/tuitube/tuitube.db
+cp ~/REPOS/tuitube/tuitube.db ~/.local/share/tuitube/tuitube.db
 ```

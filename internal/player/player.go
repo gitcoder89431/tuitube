@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	SocketPath = "/tmp/tui-tube-mpv.sock"
-	StatePath  = "/tmp/tui-tube-now-playing.json"
-	PIDPath    = "/tmp/tui-tube-mpv.pid"
+	SocketPath = "/tmp/tuitube-mpv.sock"
+	StatePath  = "/tmp/tuitube-now-playing.json"
+	PIDPath    = "/tmp/tuitube-mpv.pid"
 )
 
 type State struct {

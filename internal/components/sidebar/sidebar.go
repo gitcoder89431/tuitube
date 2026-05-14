@@ -26,11 +26,11 @@ func View(m Model, width, height int, t theme.Theme) string {
 	}
 	b.WriteString("\n\n")
 	for _, item := range m.Items {
-		line := item.Title
+		var line string
 		if item.ID == m.ActiveID {
-			line = t.Selected.Render(line)
+			line = t.Accent.Render("▶ " + item.Title)
 		} else {
-			line = t.Text.Render("  " + line)
+			line = t.Text.Render("  " + item.Title)
 		}
 		b.WriteString(line + "\n")
 	}

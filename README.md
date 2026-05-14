@@ -1,10 +1,10 @@
 # tuitube
 
-A terminal music player for curated YouTube channels. Streams via mpv, manages a local SQLite library, and exposes an MCP server so Claude can control playback and curate playlists.
+A terminal music player for curated YouTube channels. Syncs channels once via yt-dlp into a local SQLite library — search is instant, offline, and never hits an API. Streams via mpv and exposes an MCP server so Claude can control playback and curate playlists.
 
 ## Features
 
-- **8000+ tracks** across curated YouTube music channels — lofi, chill, trap, hip-hop, pop
+- **Local-first SQLite library** — 8000+ tracks synced from curated channels (lofi, chill, trap, hip-hop, pop). Search with FTS5, no API calls, no rate limits, works offline
 - **Stream instantly** via mpv — no downloads required, background audio
 - **Download** tracks to `~/Music/tuitube` on demand
 - **Favorites & playlists** — space to favorite, Claude can curate playlists via MCP
@@ -63,8 +63,8 @@ brew install mpv yt-dlp   # macOS
 ### Bootstrap with pre-seeded catalog
 
 ```bash
-git clone https://github.com/gitcoder89431/tui-tube
-cd tui-tube
+git clone https://github.com/gitcoder89431/tuitube
+cd tuitube
 tuitube bootstrap          # merges catalog.db → ~/.local/share/tuitube/tuitube.db
 tuitube                    # launch
 ```
@@ -118,7 +118,7 @@ Or manually in `~/.claude.json`:
   "mcpServers": {
     "tuitube": {
       "command": "/path/to/tuitube",
-      "args": ["--db", "~/.local/share/tuitube/tuitube.db", "mcp"]
+      "args": ["mcp"]
     }
   }
 }
@@ -126,16 +126,14 @@ Or manually in `~/.claude.json`:
 
 Then ask Claude to play songs, create playlists, or sync channels — no TUI required.
 
-## Database
+## Your Library
 
-Two-file model:
+tuitube keeps data in two places:
 
-| File | Contents | Managed by |
-|------|----------|------------|
-| `catalog.db` | Stations + tracks (8000+) | You — ship in releases |
-| `~/.local/share/tuitube/tuitube.db` | User playlists, favorites, downloads | Never overwritten on upgrade |
+- **Bundled catalog** — ships with each release, contains all pre-seeded stations and tracks. Updated when new channels are added upstream.
+- **Your library** (`~/.local/share/tuitube/tuitube.db`) — your playlists, favorites, and downloads. Never touched on upgrade.
 
-On launch, tuitube auto-merges a newer `catalog.db` into the user DB. New tracks appear, nothing the user added is touched.
+On launch, tuitube automatically pulls any new tracks from the bundled catalog into your library. New music appears, nothing you've saved is changed. You can also add your own channels at any time with `tuitube add-station`.
 
 ## Credits
 
