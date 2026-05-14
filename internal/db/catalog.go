@@ -17,6 +17,32 @@ func (db *DB) InitUserDB() error {
 			key   TEXT PRIMARY KEY,
 			value TEXT NOT NULL
 		);
+		CREATE TABLE IF NOT EXISTS stations (
+			id                  TEXT PRIMARY KEY,
+			name                TEXT NOT NULL,
+			description         TEXT,
+			color               TEXT,
+			youtube_channel_id  TEXT NOT NULL,
+			uploads_playlist_id TEXT NOT NULL,
+			last_synced         INTEGER,
+			created_at          INTEGER
+		);
+		CREATE TABLE IF NOT EXISTS tracks (
+			id           TEXT PRIMARY KEY,
+			station_id   TEXT NOT NULL REFERENCES stations(id),
+			youtube_id   TEXT NOT NULL UNIQUE,
+			song_title   TEXT,
+			artist       TEXT,
+			raw_title    TEXT NOT NULL,
+			search_text  TEXT,
+			thumbnail    TEXT,
+			published_at INTEGER,
+			created_at   INTEGER
+		);
+		CREATE INDEX IF NOT EXISTS tracks_station_idx    ON tracks(station_id);
+		CREATE INDEX IF NOT EXISTS tracks_published_idx  ON tracks(published_at DESC);
+		CREATE INDEX IF NOT EXISTS tracks_youtube_id_idx ON tracks(youtube_id);
+		CREATE VIRTUAL TABLE IF NOT EXISTS tracks_fts USING fts5(song_title, artist, raw_title, content='tracks', content_rowid='rowid');
 		CREATE TABLE IF NOT EXISTS playlists (
 			id         INTEGER PRIMARY KEY,
 			name       TEXT NOT NULL,
@@ -143,14 +169,21 @@ func (db *DB) seedDemoPlaylists() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer rows.Close()
-
-	created := 0
+	var names []string
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {
-			return created, err
+			rows.Close()
+			return 0, err
 		}
+		names = append(names, name)
+	}
+	if err := rows.Close(); err != nil {
+		return 0, err
+	}
+
+	created := 0
+	for _, name := range names {
 		var count int
 		db.conn.QueryRow("SELECT COUNT(*) FROM playlists WHERE name=?", name).Scan(&count)
 		if count > 0 {
@@ -172,7 +205,7 @@ func (db *DB) seedDemoPlaylists() (int, error) {
 		}
 		created++
 	}
-	return created, rows.Err()
+	return created, nil
 }
 
 // DefaultCatalogPath returns the system catalog path, falling back to a local
