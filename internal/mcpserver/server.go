@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/gitcoder89431/tui-tube/internal/agentlog"
-	"github.com/gitcoder89431/tui-tube/internal/db"
-	"github.com/gitcoder89431/tui-tube/internal/player"
-	tubesync "github.com/gitcoder89431/tui-tube/internal/sync"
+	"github.com/gitcoder89431/tuitube/internal/agentlog"
+	"github.com/gitcoder89431/tuitube/internal/db"
+	"github.com/gitcoder89431/tuitube/internal/player"
+	tubesync "github.com/gitcoder89431/tuitube/internal/sync"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )

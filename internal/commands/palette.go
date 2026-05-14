@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"github.com/gitcoder89431/tui-tube/internal/theme"
+	"github.com/gitcoder89431/tuitube/internal/theme"
 	tea "charm.land/bubbletea/v2"
 	"github.com/elpdev/tuipalette"
 )

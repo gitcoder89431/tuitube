@@ -1,4 +1,4 @@
-module github.com/gitcoder89431/tui-tube
+module github.com/gitcoder89431/tuitube
 
 go 1.26
 

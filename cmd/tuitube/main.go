@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gitcoder89431/tui-tube/internal/agentlog"
-	"github.com/gitcoder89431/tui-tube/internal/app"
-	"github.com/gitcoder89431/tui-tube/internal/db"
-	"github.com/gitcoder89431/tui-tube/internal/mcpserver"
-	"github.com/gitcoder89431/tui-tube/internal/player"
-	tubesync "github.com/gitcoder89431/tui-tube/internal/sync"
+	"github.com/gitcoder89431/tuitube/internal/agentlog"
+	"github.com/gitcoder89431/tuitube/internal/app"
+	"github.com/gitcoder89431/tuitube/internal/db"
+	"github.com/gitcoder89431/tuitube/internal/mcpserver"
+	"github.com/gitcoder89431/tuitube/internal/player"
+	tubesync "github.com/gitcoder89431/tuitube/internal/sync"
 	tea "charm.land/bubbletea/v2"
 )
 

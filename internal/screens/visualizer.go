@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/gitcoder89431/tui-tube/internal/theme"
+	"github.com/gitcoder89431/tuitube/internal/theme"
 )
 
 // Half-width katakana + digits — the iconic Matrix digital rain characters.

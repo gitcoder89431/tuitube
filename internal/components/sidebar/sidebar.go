@@ -3,7 +3,7 @@ package sidebar
 import (
 	"strings"
 
-	"github.com/gitcoder89431/tui-tube/internal/theme"
+	"github.com/gitcoder89431/tuitube/internal/theme"
 )
 
 type Item struct {

@@ -7,7 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/gitcoder89431/tui-tube/internal/theme"
+	"github.com/gitcoder89431/tuitube/internal/theme"
 )
 
 type SettingsState struct {

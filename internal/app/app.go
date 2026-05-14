@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/gitcoder89431/tui-tube/internal/commands"
-	"github.com/gitcoder89431/tui-tube/internal/db"
-	"github.com/gitcoder89431/tui-tube/internal/debug"
-	"github.com/gitcoder89431/tui-tube/internal/player"
-	"github.com/gitcoder89431/tui-tube/internal/screens"
-	"github.com/gitcoder89431/tui-tube/internal/theme"
+	"github.com/gitcoder89431/tuitube/internal/commands"
+	"github.com/gitcoder89431/tuitube/internal/db"
+	"github.com/gitcoder89431/tuitube/internal/debug"
+	"github.com/gitcoder89431/tuitube/internal/player"
+	"github.com/gitcoder89431/tuitube/internal/screens"
+	"github.com/gitcoder89431/tuitube/internal/theme"
 	tea "charm.land/bubbletea/v2"
 )
 

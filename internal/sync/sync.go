@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/gitcoder89431/tui-tube/internal/db"
+	"github.com/gitcoder89431/tuitube/internal/db"
 )
 
 type ytVideo struct {

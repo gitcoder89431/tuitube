@@ -2,7 +2,7 @@ package app
 
 import (
 	tea "charm.land/bubbletea/v2"
-	"github.com/gitcoder89431/tui-tube/internal/db"
+	"github.com/gitcoder89431/tuitube/internal/db"
 )
 
 // routeMsg requests navigation to a registered screen ID.
