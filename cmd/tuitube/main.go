@@ -297,6 +297,11 @@ func runSync(dbPath string, args []string) {
 	}
 	defer database.Close()
 
+	if !database.IsInitialized() {
+		fmt.Fprintln(os.Stderr, "tuitube sync: database not initialized — run `tuitube bootstrap` first")
+		os.Exit(1)
+	}
+
 	stations, err := database.ListStations()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "tuitube sync: list stations: %v\n", err)
@@ -335,6 +340,11 @@ func runClean(dbPath string) {
 		os.Exit(1)
 	}
 	defer database.Close()
+
+	if !database.IsInitialized() {
+		fmt.Fprintln(os.Stderr, "tuitube clean: database not initialized — run `tuitube bootstrap` first")
+		os.Exit(1)
+	}
 
 	tracks, err := database.AllTracks()
 	if err != nil {

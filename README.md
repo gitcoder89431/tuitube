@@ -12,7 +12,7 @@ A terminal music player for curated YouTube channels. Syncs channels once via yt
 - **Favorites & playlists** — space to favorite, Claude can curate playlists via MCP
 - **Autoplay queue** — enter on a track builds a queue from the current view
 - **Seek, pause, next** — full playback control from the keyboard
-- **Matrix & synthwave visualizers** — press `v` to cycle
+- **Matrix & synthwave visualizers** — press `v` to cycle (matrix mode requires a unicode/Nerd Font — Menlo/Consolas will show blocks)
 - **14 themes** — cycle with `ctrl+t`, live preview in the command palette
 - **Claude MCP server** — play, search, create playlists, sync channels without opening the TUI
 
@@ -62,13 +62,27 @@ paru -S mpv yt-dlp        # Arch / CachyOS
 brew install mpv yt-dlp   # macOS
 ```
 
-### Bootstrap with pre-seeded catalog
+### Install from release tarball (recommended)
+
+```bash
+# Download the latest release for your platform
+gh release download --repo gitcoder89431/tuitube --pattern "tuitube_*_darwin_arm64.tar.gz"
+tar -xzf tuitube_*.tar.gz
+
+# Move binary to PATH, then bootstrap from the extracted directory
+sudo mv tuitube /usr/local/bin/
+tuitube bootstrap --catalog ./catalog.db   # run from extracted directory
+tuitube
+```
+
+### Install from source
 
 ```bash
 git clone https://github.com/gitcoder89431/tuitube
 cd tuitube
-tuitube bootstrap          # merges catalog.db → ~/.local/share/tuitube/tuitube.db
-tuitube                    # launch
+go build -o tuitube ./cmd/tuitube
+tuitube bootstrap          # catalog.db is found automatically next to the binary
+tuitube
 ```
 
 ### Add a new channel

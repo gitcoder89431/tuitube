@@ -216,7 +216,21 @@ func DefaultCatalogPath() string {
 	if _, err := os.Stat(system); err == nil {
 		return system
 	}
-	// dev fallback: catalog.db beside the running binary
+	// user data dir (macOS: ~/Library/Application Support, Linux: ~/.local/share)
+	if dataDir, err := os.UserCacheDir(); err == nil {
+		p := filepath.Join(filepath.Dir(dataDir), "tuitube", "catalog.db")
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	// beside the running binary (tarball install: extract all, run bootstrap from there)
 	exe, _ := os.Executable()
 	return filepath.Join(filepath.Dir(exe), "catalog.db")
+}
+
+// IsInitialized returns true if the user DB has been bootstrapped (stations table exists).
+func (db *DB) IsInitialized() bool {
+	var count int
+	err := db.conn.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='stations'`).Scan(&count)
+	return err == nil && count > 0
 }
