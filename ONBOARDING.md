@@ -83,7 +83,9 @@ Station IDs from `list_stations` or `SELECT id, name FROM stations;`.
 
 ## Database location
 
-Default: `~/.local/share/tuitube/tuitube.db`
+Default path is platform-specific:
+- Linux: `~/.local/share/tuitube/tuitube.db`
+- macOS: `~/Library/Application Support/tuitube/tuitube.db`
 
 Override: `tuitube --db /path/to/your.db`
 

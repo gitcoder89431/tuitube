@@ -131,7 +131,9 @@ Then ask Claude to play songs, create playlists, or sync channels — no TUI req
 tuitube keeps data in two places:
 
 - **Bundled catalog** — ships with each release, contains all pre-seeded stations and tracks. Updated when new channels are added upstream.
-- **Your library** (`~/.local/share/tuitube/tuitube.db`) — your playlists, favorites, and downloads. Never touched on upgrade.
+- **Your library** — your playlists, favorites, and downloads. Never touched on upgrade.
+  - Linux: `~/.local/share/tuitube/tuitube.db`
+  - macOS: `~/Library/Application Support/tuitube/tuitube.db`
 
 On launch, tuitube automatically pulls any new tracks from the bundled catalog into your library. New music appears, nothing you've saved is changed. You can also add your own channels at any time with `tuitube add-station`.
 

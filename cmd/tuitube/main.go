@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/gitcoder89431/tuitube/internal/agentlog"
@@ -27,6 +28,9 @@ func defaultDBPath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "tuitube.db"
+	}
+	if runtime.GOOS == "darwin" {
+		return filepath.Join(home, "Library", "Application Support", "tuitube", "tuitube.db")
 	}
 	return filepath.Join(home, ".local", "share", "tuitube", "tuitube.db")
 }
@@ -86,7 +90,7 @@ subcommands:
   mcp             start the MCP server (for Claude Code integration)
 
 global flags:
-  --db PATH       path to user database (default: ~/.local/share/tuitube/tuitube.db)
+  --db PATH       path to user database (default: platform-specific data dir)
   --version       print version`)
 }
 

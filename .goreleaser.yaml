@@ -31,7 +31,6 @@ archives:
     files:
       - catalog.db
       - README.md
-      - ONBOARDING.md
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
