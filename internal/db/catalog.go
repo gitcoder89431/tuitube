@@ -42,7 +42,7 @@ func (db *DB) InitUserDB() error {
 		CREATE INDEX IF NOT EXISTS tracks_station_idx    ON tracks(station_id);
 		CREATE INDEX IF NOT EXISTS tracks_published_idx  ON tracks(published_at DESC);
 		CREATE INDEX IF NOT EXISTS tracks_youtube_id_idx ON tracks(youtube_id);
-		CREATE VIRTUAL TABLE IF NOT EXISTS tracks_fts USING fts5(song_title, artist, content=tracks, content_rowid=rowid);
+		CREATE VIRTUAL TABLE IF NOT EXISTS tracks_fts USING fts5(song_title, artist, raw_title, content='tracks', content_rowid='rowid');
 		CREATE TABLE IF NOT EXISTS playlists (
 			id         INTEGER PRIMARY KEY,
 			name       TEXT NOT NULL,
