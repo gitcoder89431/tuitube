@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -288,6 +290,7 @@ func runTUI(dbPath string) {
 func runSync(dbPath string, args []string) {
 	fs := flag.NewFlagSet("sync", flag.ExitOnError)
 	stationID := fs.String("station", "", "sync only this station ID (default: all)")
+	asJSON := fs.Bool("json", false, "output machine-readable JSON summary")
 	fs.Parse(args)
 
 	database, err := db.Open(dbPath)
@@ -308,29 +311,63 @@ func runSync(dbPath string, args []string) {
 		os.Exit(1)
 	}
 
+	type stationResult struct {
+		Station  string `json:"station"`
+		Inserted int    `json:"inserted"`
+		Error    string `json:"error,omitempty"`
+	}
+	var results []stationResult
 	total := 0
+
 	for _, s := range stations {
 		if *stationID != "" && s.ID != *stationID {
 			continue
 		}
-		fmt.Printf("[%s]\n", s.Name)
-		n, err := tubesync.Station(database, s, os.Stdout)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "  error: %v\n", err)
-			continue
+		var w io.Writer = os.Stdout
+		if *asJSON {
+			w = io.Discard
+		} else {
+			fmt.Printf("[%s]\n", s.Name)
 		}
-		fmt.Printf("  +%d new tracks\n\n", n)
+		n, err := tubesync.Station(database, s, w)
+		r := stationResult{Station: s.Name, Inserted: n}
+		if err != nil {
+			r.Error = err.Error()
+			if !*asJSON {
+				fmt.Fprintf(os.Stderr, "  error: %v\n", err)
+			}
+		} else if !*asJSON {
+			fmt.Printf("  +%d new tracks\n\n", n)
+		}
+		results = append(results, r)
 		total += n
 	}
 
 	if total > 0 {
-		fmt.Println("rebuilding FTS index...")
+		if !*asJSON {
+			fmt.Println("rebuilding FTS index...")
+		}
 		if err := database.RebuildFTS(); err != nil {
 			fmt.Fprintf(os.Stderr, "fts rebuild: %v\n", err)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("done. %d new tracks total.\n", total)
+
+	if *asJSON {
+		type syncSummary struct {
+			StationsSynced int             `json:"stations_synced"`
+			TracksAdded    int             `json:"tracks_added"`
+			Stations       []stationResult `json:"stations"`
+		}
+		out, _ := json.Marshal(syncSummary{
+			StationsSynced: len(results),
+			TracksAdded:    total,
+			Stations:       results,
+		})
+		fmt.Println(string(out))
+	} else {
+		fmt.Printf("done. %d new tracks total.\n", total)
+	}
 }
 
 func runClean(dbPath string) {

@@ -78,6 +78,7 @@ func (s *Server) Serve() error {
 		mcp.WithString("query", mcp.Description("Search query (artist, title, or both)")),
 		mcp.WithBoolean("favorites_only", mcp.Description("Only return favorited tracks")),
 		mcp.WithNumber("limit", mcp.Description("Max results (default 30)")),
+		mcp.WithString("station_id", mcp.Description("Filter to a single station (from list_stations)")),
 	), mcp.NewTypedToolHandler(s.searchTracks))
 
 	srv.AddTool(mcp.NewTool("list_stations",
@@ -140,6 +141,7 @@ type searchArgs struct {
 	Query         string  `json:"query"`
 	FavoritesOnly bool    `json:"favorites_only"`
 	Limit         float64 `json:"limit"`
+	StationID     string  `json:"station_id"`
 }
 
 type syncArgs struct {
@@ -181,7 +183,7 @@ func (s *Server) searchTracks(_ context.Context, _ mcp.CallToolRequest, args sea
 	if limit <= 0 {
 		limit = 30
 	}
-	tracks, err := s.database.ListTracks(args.Query, args.FavoritesOnly && args.Query == "")
+	tracks, err := s.database.ListTracks(args.Query, args.FavoritesOnly && args.Query == "", args.StationID)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}

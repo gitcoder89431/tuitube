@@ -15,9 +15,25 @@ type Track struct {
 	IsFavorite bool
 }
 
-func (db *DB) ListTracks(query string, favoritesOnly bool) ([]Track, error) {
+func (db *DB) ListTracks(query string, favoritesOnly bool, stationID ...string) ([]Track, error) {
 	var rows *sql.Rows
 	var err error
+
+	sid := ""
+	if len(stationID) > 0 {
+		sid = stationID[0]
+	}
+
+	stationFilter := ""
+	if sid != "" {
+		stationFilter = " AND t.station_id = ?"
+	}
+	stationArg := func(args ...any) []any {
+		if sid != "" {
+			return append(args, sid)
+		}
+		return args
+	}
 
 	switch {
 	case query != "":
@@ -30,9 +46,9 @@ func (db *DB) ListTracks(query string, favoritesOnly bool) ([]Track, error) {
 			FROM tracks_fts fts
 			JOIN tracks t ON t.rowid = fts.rowid
 			LEFT JOIN playlist_tracks pt ON pt.track_id = t.id AND pt.playlist_id = ?
-			WHERE tracks_fts MATCH ?
+			WHERE tracks_fts MATCH ?`+stationFilter+`
 			ORDER BY rank
-		`, favPlaylistID, ftsQuery)
+		`, stationArg(favPlaylistID, ftsQuery)...)
 	case favoritesOnly:
 		rows, err = db.conn.Query(`
 			SELECT t.id, t.youtube_id,
@@ -41,9 +57,9 @@ func (db *DB) ListTracks(query string, favoritesOnly bool) ([]Track, error) {
 			       1
 			FROM playlist_tracks pt
 			JOIN tracks t ON t.id = pt.track_id
-			WHERE pt.playlist_id = ?
+			WHERE pt.playlist_id = ?`+stationFilter+`
 			ORDER BY pt.added_at DESC
-		`, favPlaylistID)
+		`, stationArg(favPlaylistID)...)
 	default:
 		rows, err = db.conn.Query(`
 			SELECT t.id, t.youtube_id,
@@ -52,8 +68,9 @@ func (db *DB) ListTracks(query string, favoritesOnly bool) ([]Track, error) {
 			       CASE WHEN pt.track_id IS NOT NULL THEN 1 ELSE 0 END
 			FROM tracks t
 			LEFT JOIN playlist_tracks pt ON pt.track_id = t.id AND pt.playlist_id = ?
+			WHERE 1=1`+stationFilter+`
 			ORDER BY t.published_at DESC
-		`, favPlaylistID)
+		`, stationArg(favPlaylistID)...)
 	}
 	if err != nil {
 		return nil, err

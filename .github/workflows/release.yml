@@ -13,9 +13,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  goreleaser:
+  check-catalog:
+    name: Check catalog freshness
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
+      - name: Install sqlite3
+        run: sudo apt-get install -y sqlite3
+
+      - name: Warn if catalog.db is stale
+        run: |
+          if [ ! -f catalog.db ]; then
+            echo "::error::catalog.db not found — run scripts/export_catalog.sh before tagging"
+            exit 1
+          fi
+          AGE_DAYS=$(( ( $(date +%s) - $(stat -c %Y catalog.db) ) / 86400 ))
+          TRACK_COUNT=$(sqlite3 catalog.db "SELECT COUNT(*) FROM tracks;")
+          STATION_COUNT=$(sqlite3 catalog.db "SELECT COUNT(*) FROM stations;")
+          echo "catalog.db: $STATION_COUNT stations, $TRACK_COUNT tracks, ${AGE_DAYS}d old"
+          if [ "$AGE_DAYS" -gt 7 ]; then
+            echo "::warning::catalog.db is ${AGE_DAYS} days old — consider syncing and re-exporting before release"
+          fi
+
+  goreleaser:
+    name: GoReleaser
+    runs-on: ubuntu-latest
+    needs: check-catalog
     steps:
       - name: Checkout
         uses: actions/checkout@v4
