@@ -14,7 +14,7 @@ Follow these steps in order. Run the verification commands before finishing.
 2. **Register the screen** in `internal/app/app.go` → `registerScreens`. Add its ID to the `preferred` slice in `refreshScreenOrder` if it belongs in the primary sidebar.
 3. **Register a command** in `registerCommands` (same file) so the screen is reachable via `ctrl+k`. Command `Run` functions must return a `tea.Cmd` that emits a message defined in `internal/app/messages.go`.
 4. **Log key events** via `logs.Info` / `logs.Error` so behavior is visible in the Logs screen (see Logging section below).
-5. **Verify:** `go test ./...` and `go build ./cmd/go-tui-template` must pass before committing.
+5. **Verify:** `go test ./...` and `go build ./cmd/tuitube` must pass before committing.
 
 ## Key Packages
 
@@ -116,26 +116,13 @@ Preserve these behaviors unless the product explicitly requires otherwise:
 - Sidebar supports arrow keys and vim keys.
 - Layout handles small terminal sizes without panics or negative dimensions.
 
-## Adapting the Template
-
-When starting a real project from this template:
-
-- Replace the module path in `go.mod` and all Go files.
-- Rename `cmd/go-tui-template` to your binary name.
-- Update `project_name`, build id, and binary in `.goreleaser.yaml`.
-- Update `AppName` in `internal/app/view.go`.
-- Update README, AGENTS.md, and the home screen placeholder text.
-- Update Docker image name in `.github/workflows/publish.yml` if using Docker.
-
-See README for the full rename script.
-
 ## Testing
 
 Prefer tests for non-visual logic. Do not snapshot-test terminal UI output.
 
 ```sh
 go test ./...
-go build ./cmd/go-tui-template
+go build ./cmd/tuitube
 ```
 
 ## Release

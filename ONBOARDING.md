@@ -28,24 +28,48 @@ This adds it to `~/.claude.json`. The server starts automatically when Claude Co
 
 ## MCP tools available
 
-| Tool | What it does |
-|------|-------------|
-| `search_tracks` | Search by artist, title, or both (limit optional) |
-| `play_track` / `stop_playback` | Stream or stop via mpv |
-| `toggle_favorite` | Favorite a track by ID |
-| `list_playlists` / `create_playlist` | Manage playlists |
-| `add_to_playlist` | Add multiple tracks at once (array of IDs) |
-| `list_playlist_tracks` | See what's in a playlist |
-| `list_stations` / `add_station` | View or add YouTube channels |
-| `sync_station` | Pull new uploads from a channel |
+| Tool | Params | What it does |
+|------|--------|-------------|
+| `search_tracks` | `query`, `favorites_only`, `limit` | Search by artist, title, or both |
+| `play_track` | `youtube_id`, `title` | Stream a track via mpv |
+| `stop_playback` | — | Stop current track |
+| `toggle_favorite` | `track_id` | Favorite or unfavorite a track |
+| `list_playlists` | — | List playlists with track counts |
+| `create_playlist` | `name` | Create a new playlist |
+| `add_to_playlist` | `playlist_id`, `track_ids[]` | Add multiple tracks at once |
+| `list_playlist_tracks` | `playlist_id` | List tracks in a playlist |
+| `list_stations` | — | List synced YouTube channels |
+| `add_station` | `url`, `name`, `sync_now` | Add a channel — set `sync_now: true` to pull tracks immediately |
+| `sync_station` | `station_id` | Pull new uploads (omit station_id to sync all) |
 
 ## Adding a new YouTube channel
 
 ```
-add_station --url "https://www.youtube.com/@ChannelName/videos" --name "Display Name"
+add_station(url: "https://www.youtube.com/@ChannelName", name: "Display Name", sync_now: true)
 ```
 
-Works with any URL format — `@handle`, `/channel/UC...`, `/c/`, `/user/`.
+Works with any URL format — `@handle`, `/channel/UC...`, `/c/`, `/user/`. With `sync_now: true` the response includes `inserted` (track count) and `sync_log`.
+
+## Checking now-playing state
+
+```bash
+tuitube status --json
+```
+
+Output shape:
+```json
+{"playing":true,"paused":false,"youtube_id":"abc123","title":"Heather","artist":"Conan Gray","time_pos":42.1,"duration":198.0}
+```
+
+Returns `{"playing":false}` when nothing is active.
+
+## Checking system health
+
+```bash
+tuitube doctor
+```
+
+Exits `0` if mpv and yt-dlp are found and the DB is reachable. Exits `1` with a human-readable report if anything is missing — check this before running sync or playback if you suspect an issue.
 
 ## Managing playlists via SQL
 

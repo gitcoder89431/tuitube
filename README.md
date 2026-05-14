@@ -57,6 +57,8 @@ A terminal music player for curated YouTube channels. Syncs channels once via yt
 
 ### Prerequisites
 
+> **Platform:** Linux and macOS only. Windows is not supported (mpv IPC uses Unix sockets).
+
 ```bash
 paru -S mpv yt-dlp        # Arch / CachyOS
 brew install mpv yt-dlp   # macOS

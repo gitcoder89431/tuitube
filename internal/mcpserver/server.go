@@ -29,7 +29,7 @@ tuitube is a terminal music player for curated YouTube channels. It streams audi
 
 - Search and play tracks: search_tracks → play_track
 - Create and populate playlists: create_playlist → add_to_playlist
-- Add YouTube channels: add_station → sync_station
+- Add YouTube channels: add_station(sync_now: true) → done
 - Control playback: stop_playback, toggle_favorite
 
 ## Tool usage notes
@@ -38,13 +38,20 @@ tuitube is a terminal music player for curated YouTube channels. It streams audi
 - add_to_playlist accepts an array of track_ids — batch in one call
 - search_tracks with empty query returns recent tracks
 - Station IDs come from list_stations
+- add_station with sync_now: true pulls tracks immediately and returns inserted count
+- sync_station omitting station_id syncs all stations
 
 ## Data model
 
 - Tracks belong to stations (YouTube channels)
 - Playlists contain tracks via track IDs
 - Favorites playlist is always id=1
-- play_track streams via mpv in the background — no TUI required`
+- play_track streams via mpv in the background — no TUI required
+
+## Checking state
+
+- tuitube status --json → {"playing":bool,"paused":bool,"youtube_id":"...","title":"...","artist":"...","time_pos":0.0,"duration":0.0}
+- tuitube doctor → exits 0 if healthy, 1 with report if mpv/yt-dlp/DB missing`
 
 func (s *Server) Serve() error {
 	srv := server.NewMCPServer(
@@ -249,8 +256,10 @@ func (s *Server) addStation(_ context.Context, _ mcp.CallToolRequest, args addSt
 		result["sync_log"] = buf2.s
 		if err != nil {
 			result["sync_error"] = err.Error()
-		} else if n > 0 {
+		}
+		if n > 0 {
 			_ = s.database.RebuildFTS()
+			agentlog.Write(fmt.Sprintf("↻ synced %s: %d new tracks", args.Name, n))
 		}
 	}
 
