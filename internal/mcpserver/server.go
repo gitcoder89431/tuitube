@@ -21,11 +21,49 @@ func New(database *db.DB) *Server {
 	return &Server{database: database}
 }
 
+const onboarding = `# tuitube — Agent Onboarding
+
+tuitube is a terminal music player for curated YouTube channels. It streams audio via mpv, manages a local SQLite library of 8000+ tracks, and exposes this MCP server so agents can control playback, curate playlists, and manage the library.
+
+## What you can do
+
+- Search and play tracks: search_tracks → play_track
+- Create and populate playlists: create_playlist → add_to_playlist
+- Add YouTube channels: add_station → sync_station
+- Control playback: stop_playback, toggle_favorite
+
+## Tool usage notes
+
+- Always call search_tracks first to get track IDs before playing or favoriting
+- add_to_playlist accepts an array of track_ids — batch in one call
+- search_tracks with empty query returns recent tracks
+- Station IDs come from list_stations
+
+## Data model
+
+- Tracks belong to stations (YouTube channels)
+- Playlists contain tracks via track IDs
+- Favorites playlist is always id=1
+- play_track streams via mpv in the background — no TUI required`
+
 func (s *Server) Serve() error {
 	srv := server.NewMCPServer(
 		"tuitube",
 		"1.0.0",
 		server.WithToolCapabilities(false),
+		server.WithResourceCapabilities(false, false),
+	)
+
+	srv.AddResource(
+		mcp.NewResource("tuitube://onboarding", "Agent Onboarding",
+			mcp.WithResourceDescription("Usage guide and data model for AI agents"),
+			mcp.WithMIMEType("text/markdown"),
+		),
+		func(_ context.Context, _ mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+			return []mcp.ResourceContents{
+				mcp.TextResourceContents{URI: "tuitube://onboarding", MIMEType: "text/markdown", Text: onboarding},
+			}, nil
+		},
 	)
 
 	srv.AddTool(mcp.NewTool("search_tracks",
