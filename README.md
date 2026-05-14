@@ -106,7 +106,12 @@ tuitube exposes 11 MCP tools so Claude can manage your library without the TUI o
 - *"Add the NCS channel and sync it — https://www.youtube.com/@NCSMusic"*
 - *"Search for something melancholic by Conan Gray and favorite it"*
 
-Register in `~/.claude.json`:
+**Setup (one-time):**
+```bash
+claude mcp add tuitube tuitube mcp
+```
+
+Or manually in `~/.claude.json`:
 
 ```json
 {

@@ -14,6 +14,18 @@ Claude has live MCP tools connected to your library. You can ask things like:
 
 Claude does not need the TUI open to work. If Claude starts a track, the TUI header shows it automatically. The Logs screen shows recent agent activity in accent color.
 
+## MCP Setup
+
+Register tuitube as an MCP server once — Claude Code handles the rest:
+
+```bash
+claude mcp add tuitube tuitube mcp
+```
+
+This adds it to `~/.claude.json`. The server starts automatically when Claude Code opens. To remove: `claude mcp remove tuitube`.
+
+> **Note:** `tuitube` must be in your PATH. If you installed via AUR or copied the binary manually, verify with `which tuitube` first.
+
 ## MCP tools available
 
 | Tool | What it does |
