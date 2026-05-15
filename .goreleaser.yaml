@@ -37,6 +37,25 @@ archives:
       {{- .Os }}_
       {{- .Arch }}
 
+brews:
+  - name: tuitube
+    repository:
+      owner: gitcoder89431
+      name: homebrew-tuitube
+    homepage: "https://github.com/gitcoder89431/tuitube"
+    description: "Terminal music player for curated YouTube channels with Claude MCP support"
+    license: "MIT"
+    dependencies:
+      - name: mpv
+      - name: yt-dlp
+    install: |
+      bin.install "tuitube"
+      (share/"tuitube").install "catalog.db"
+    post_install: |
+      system bin/"tuitube", "bootstrap", "--catalog", share/"tuitube/catalog.db"
+    test: |
+      system "#{bin}/tuitube", "--version"
+
 checksum:
   name_template: checksums.txt
 

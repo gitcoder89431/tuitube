@@ -216,6 +216,13 @@ func DefaultCatalogPath() string {
 	if _, err := os.Stat(system); err == nil {
 		return system
 	}
+	// Homebrew: binary is at $(prefix)/bin/tuitube, catalog at $(prefix)/share/tuitube/catalog.db
+	if exe, err := os.Executable(); err == nil {
+		brew := filepath.Join(filepath.Dir(filepath.Dir(exe)), "share", "tuitube", "catalog.db")
+		if _, err := os.Stat(brew); err == nil {
+			return brew
+		}
+	}
 	// user data dir (macOS: ~/Library/Application Support, Linux: ~/.local/share)
 	if dataDir, err := os.UserCacheDir(); err == nil {
 		p := filepath.Join(filepath.Dir(dataDir), "tuitube", "catalog.db")
