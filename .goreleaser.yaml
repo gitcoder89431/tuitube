@@ -42,6 +42,7 @@ brews:
     repository:
       owner: gitcoder89431
       name: homebrew-tuitube
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     homepage: "https://github.com/gitcoder89431/tuitube"
     description: "Terminal music player for curated YouTube channels with Claude MCP support"
     license: "MIT"
