@@ -59,12 +59,24 @@ A terminal music player for curated YouTube channels. Syncs channels once via yt
 
 > **Platform:** Linux and macOS only. Windows is not supported (mpv IPC uses Unix sockets).
 
+### macOS (Homebrew)
+
 ```bash
-paru -S mpv yt-dlp        # Arch / CachyOS
-brew install mpv yt-dlp   # macOS
+brew tap gitcoder89431/tuitube
+brew install tuitube
 ```
 
-### Install from release tarball (recommended)
+Dependencies (mpv, yt-dlp) and the music catalog are installed automatically.
+
+### Linux (Arch / CachyOS)
+
+```bash
+paru -S mpv yt-dlp
+```
+
+Then install from the release tarball below.
+
+### Install from release tarball
 
 ```bash
 # Download the latest release for your platform
