@@ -66,7 +66,9 @@ brew tap gitcoder89431/tuitube
 brew install tuitube
 ```
 
-Dependencies (mpv, yt-dlp) and the music catalog are installed automatically.
+This installs mpv and yt-dlp as dependencies. mpv has a large dependency tree (ffmpeg, codecs, etc.) — if you want a lighter install, use the binary release below and install mpv/yt-dlp separately.
+
+On first launch, tuitube will automatically bootstrap the music catalog into your library.
 
 ### Linux (Arch / CachyOS)
 

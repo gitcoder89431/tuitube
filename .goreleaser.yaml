@@ -52,8 +52,6 @@ brews:
     install: |
       bin.install "tuitube"
       (share/"tuitube").install "catalog.db"
-    post_install: |
-      system bin/"tuitube", "bootstrap", "--catalog", share/"tuitube/catalog.db"
     test: |
       system "#{bin}/tuitube", "--version"
 
