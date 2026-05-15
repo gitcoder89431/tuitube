@@ -37,7 +37,7 @@ archives:
       {{- .Os }}_
       {{- .Arch }}
 
-homebrew:
+brews:
   - name: tuitube
     repository:
       owner: gitcoder89431
