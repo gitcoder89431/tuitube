@@ -2,19 +2,19 @@
 
 ![tuitube demo](demo.gif)
 
-A terminal music player for curated YouTube channels. Syncs channels once via yt-dlp into a local SQLite library — search is instant, offline, and never hits an API. Streams via mpv and exposes an MCP server so Claude can control playback and curate playlists.
+A terminal music player for curated YouTube channels. Syncs channels once via yt-dlp into a local SQLite library — search is instant, offline, and never hits an API. Streams via mpv. Fully programmable: control playback, manage playlists, and sync channels from any script, automation tool, or AI agent via the built-in MCP server.
 
 ## Features
 
 - **Local-first SQLite library** — 8000+ tracks synced from curated channels (lofi, chill, trap, hip-hop, pop). Search with FTS5, no API calls, no rate limits, works offline
 - **Stream instantly** via mpv — no downloads required, background audio
 - **Download** tracks to `~/Music/tuitube` on demand
-- **Favorites & playlists** — space to favorite, Claude can curate playlists via MCP
+- **Favorites & playlists** — space to favorite, full playlist management from the keyboard
 - **Autoplay queue** — enter on a track builds a queue from the current view
 - **Seek, pause, next** — full playback control from the keyboard
 - **Matrix & synthwave visualizers** — press `v` to cycle (matrix mode requires a unicode/Nerd Font — Menlo/Consolas will show blocks)
 - **14 themes** — cycle with `ctrl+t`, live preview in the command palette
-- **Claude MCP server** — play, search, create playlists, sync channels without opening the TUI
+- **Programmable MCP server** — headless control over playback, search, playlists, and sync from any tool that supports MCP (Claude, scripts, automations)
 
 ## Stack
 
@@ -115,9 +115,9 @@ tuitube sync               # all stations
 tuitube sync --station ID  # one station
 ```
 
-## Claude MCP
+## Programmable Control (MCP)
 
-tuitube exposes 11 MCP tools so Claude can manage your library without the TUI open.
+tuitube exposes 11 MCP tools for headless control — manage your library, control playback, and sync channels without the TUI open. Works with any MCP-compatible client.
 
 | Tool | Params | What it does |
 |------|--------|-------------|
