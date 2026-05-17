@@ -30,7 +30,10 @@ type TogglePauseMsg struct{}
 type BackMsg struct{}
 
 // DownloadFinishedMsg fires when yt-dlp completes for a track.
-type DownloadFinishedMsg struct{ YoutubeID string }
+type DownloadFinishedMsg struct {
+	YoutubeID string
+	Filepath  string // empty if download failed
+}
 
 
 // TracksLoadedMsg carries the result of a DB track query.
@@ -62,7 +65,7 @@ type Library struct {
 	playlistTitle    string
 
 	downloading map[string]bool
-	downloaded  map[string]bool
+	downloaded  map[string]string // youtube_id → local filepath
 }
 
 func NewLibrary(database *db.DB, t theme.Theme) Library {
@@ -95,7 +98,7 @@ func (l Library) ReloadCmd() tea.Cmd {
 	return l.loadCmd()
 }
 
-func (l Library) WithDownloadState(downloading, downloaded map[string]bool) Library {
+func (l Library) WithDownloadState(downloading map[string]bool, downloaded map[string]string) Library {
 	l.downloading = downloading
 	l.downloaded = downloaded
 	return l
@@ -327,7 +330,7 @@ func (l Library) trackRow(t db.Track, selected bool, titleW, artistW, width int)
 	artistCell := pad(truncate(t.Artist, artistW), artistW)
 
 	isDownloading := l.downloading[t.YoutubeID]
-	isDownloaded := l.downloaded[t.YoutubeID]
+	isDownloaded := l.downloaded[t.YoutubeID] != ""
 
 	suffixW := 0
 	if t.IsFavorite {

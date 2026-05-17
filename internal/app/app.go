@@ -52,7 +52,7 @@ type Model struct {
 	queue       []db.Track
 	queuePos    int
 	downloading map[string]bool
-	downloaded  map[string]bool
+	downloaded  map[string]string // youtube_id → local filepath
 }
 
 func New(meta BuildInfo, database *db.DB) Model {
@@ -60,7 +60,7 @@ func New(meta BuildInfo, database *db.DB) Model {
 	log.Info("App started")
 
 	// ensure downloads table exists and load persisted state
-	downloaded := make(map[string]bool)
+	downloaded := make(map[string]string)
 	if database != nil {
 		if err := database.InitDownloads(); err != nil {
 			log.Error("init downloads", err)
@@ -97,7 +97,7 @@ func (m Model) Init() tea.Cmd {
 	cmds := []tea.Cmd{
 		func() tea.Msg { return tea.RequestWindowSize() },
 		nowPlayingTick(),
-		sessionResumeCmd(),
+		sessionResumeCmd(m.downloaded),
 	}
 	for _, screen := range m.screens {
 		cmds = append(cmds, screen.Init())

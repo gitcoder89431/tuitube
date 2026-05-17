@@ -269,7 +269,7 @@ func (s *Server) addStation(_ context.Context, _ mcp.CallToolRequest, args addSt
 }
 
 func (s *Server) playTrack(_ context.Context, _ mcp.CallToolRequest, args playArgs) (*mcp.CallToolResult, error) {
-	if err := player.Play(args.YoutubeID, args.Title, ""); err != nil {
+	if err := player.Play(args.YoutubeID, args.Title, "", ""); err != nil {
 		return mcp.NewToolResultError("mpv: " + err.Error()), nil
 	}
 	label := args.Title

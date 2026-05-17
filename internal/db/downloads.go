@@ -25,15 +25,15 @@ func (db *DB) MarkDownloaded(youtubeID, filepath string) error {
 	return err
 }
 
-// LoadDownloaded returns the set of youtube IDs whose files still exist on disk.
-func (db *DB) LoadDownloaded() (map[string]bool, error) {
+// LoadDownloaded returns a map of youtube ID → local filepath for files that still exist on disk.
+func (db *DB) LoadDownloaded() (map[string]string, error) {
 	rows, err := db.conn.Query("SELECT youtube_id, filepath FROM downloads")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	result := make(map[string]bool)
+	result := make(map[string]string)
 	var toDelete []string
 
 	for rows.Next() {
@@ -42,7 +42,7 @@ func (db *DB) LoadDownloaded() (map[string]bool, error) {
 			return nil, err
 		}
 		if _, err := os.Stat(fp); err == nil {
-			result[id] = true
+			result[id] = fp
 		} else {
 			toDelete = append(toDelete, id)
 		}

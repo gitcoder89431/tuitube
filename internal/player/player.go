@@ -29,16 +29,23 @@ type State struct {
 }
 
 // Play starts or replaces the current track. Kills any existing mpv first.
-func Play(youtubeID, title, artist string) error {
+// If localPath is non-empty and the file exists, it is played directly;
+// otherwise mpv streams from YouTube.
+func Play(youtubeID, title, artist, localPath string) error {
 	Stop()
 
-	url := "https://www.youtube.com/watch?v=" + youtubeID
+	source := "https://www.youtube.com/watch?v=" + youtubeID
+	if localPath != "" {
+		if _, err := os.Stat(localPath); err == nil {
+			source = localPath
+		}
+	}
 	cmd := exec.Command("mpv",
 		"--no-video",
 		"--really-quiet",
 		"--gapless-audio=yes",
 		"--input-ipc-server="+SocketPath,
-		url,
+		source,
 	)
 	if err := cmd.Start(); err != nil {
 		return err

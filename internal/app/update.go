@@ -103,7 +103,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.logs.Error("toggle pause", err)
 			}
 		} else {
-			if err := player.Play(msg.YoutubeID, msg.Title, msg.Artist); err != nil {
+			if err := player.Play(msg.YoutubeID, msg.Title, msg.Artist, m.downloaded[msg.YoutubeID]); err != nil {
 				m.logs.Error("mpv", err)
 			}
 			m.buildQueue(msg.YoutubeID)
@@ -122,11 +122,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if fp != "" {
 				_ = database.MarkDownloaded(youtubeID, fp)
 			}
-			return screens.DownloadFinishedMsg{YoutubeID: youtubeID}
+			return screens.DownloadFinishedMsg{YoutubeID: youtubeID, Filepath: fp}
 		}
 	case screens.DownloadFinishedMsg:
 		delete(m.downloading, msg.YoutubeID)
-		m.downloaded[msg.YoutubeID] = true
+		m.downloaded[msg.YoutubeID] = msg.Filepath
 		m.syncDownloadStateToLibrary()
 		return m, nil
 	case quitMsg:
@@ -318,7 +318,7 @@ func visTick() tea.Cmd {
 }
 
 // sessionResumeCmd restarts playback if the state file has a track but mpv isn't running.
-func sessionResumeCmd() tea.Cmd {
+func sessionResumeCmd(downloaded map[string]string) tea.Cmd {
 	return func() tea.Msg {
 		if player.IsAlive() {
 			return nil // mpv already running, nothing to do
@@ -327,8 +327,7 @@ func sessionResumeCmd() tea.Cmd {
 		if s == nil || s.Finished {
 			return nil
 		}
-		// state file has a track but no live mpv — re-play it
-		_ = player.Play(s.YoutubeID, s.Title, s.Artist)
+		_ = player.Play(s.YoutubeID, s.Title, s.Artist, downloaded[s.YoutubeID])
 		return nowPlayingTickMsg{}
 	}
 }
@@ -398,7 +397,7 @@ func (m *Model) playNextInQueue() tea.Cmd {
 	}
 	m.queuePos = next
 	t := m.queue[next]
-	if err := player.Play(t.YoutubeID, t.SongTitle, t.Artist); err != nil {
+	if err := player.Play(t.YoutubeID, t.SongTitle, t.Artist, m.downloaded[t.YoutubeID]); err != nil {
 		m.logs.Error("autoplay", err)
 	}
 	m.nowPlaying = player.NowPlaying()
