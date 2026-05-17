@@ -16,6 +16,33 @@ A terminal music player for curated YouTube channels. Syncs channels once via yt
 - **14 themes** — cycle with `ctrl+t`, live preview in the command palette
 - **Programmable MCP server** — headless control over playback, search, playlists, and sync from any tool that supports MCP (Claude, scripts, automations)
 
+## Architecture
+
+```mermaid
+graph LR
+    YT[YouTube]
+
+    subgraph tuitube
+        DB[(SQLite)]
+        TUI[TUI]
+        MCP[MCP Server]
+    end
+
+    subgraph playback
+        MPV[mpv]
+        Local[~/Music/tuitube]
+    end
+
+    YT -->|yt-dlp sync metadata| DB
+    DB --> TUI
+    DB --> MCP
+    TUI -->|IPC socket| MPV
+    MCP -->|IPC socket| MPV
+    TUI -->|yt-dlp download| Local
+    Local -->|local file if downloaded| MPV
+    YT -->|stream if not downloaded| MPV
+```
+
 ## Stack
 
 - [Bubble Tea v2](https://charm.land/bubbletea/v2) — TUI framework
