@@ -15,10 +15,3 @@ func View(bindings []key.Binding, width, height int, t theme.Theme) string {
 	}
 	return t.Footer.Width(width).Height(height).Render(strings.Join(parts, "   "))
 }
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}

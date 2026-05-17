@@ -2,6 +2,7 @@ package header
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gitcoder89431/tuitube/internal/player"
 	"github.com/gitcoder89431/tuitube/internal/theme"
@@ -17,6 +18,11 @@ type Model struct {
 	Duration    float64
 }
 
+func fmtTime(secs float64) string {
+	s := int(secs)
+	return fmt.Sprintf("%d:%02d", s/60, s%60)
+}
+
 func View(m Model, width, height int, t theme.Theme) string {
 	frameWidth, _ := t.Header.GetFrameSize()
 	innerWidth := max(0, width-frameWidth)
@@ -26,7 +32,8 @@ func View(m Model, width, height int, t theme.Theme) string {
 	right := m.ScreenTitle
 	rightW := lipgloss.Width(right)
 
-	center := ""
+	const barW = 16
+
 	if m.NowPlaying != nil {
 		icon := "▶"
 		if m.NowPlaying.Paused {
@@ -36,42 +43,34 @@ func View(m Model, width, height int, t theme.Theme) string {
 		if m.NowPlaying.Artist != "" {
 			label = icon + "  " + m.NowPlaying.Artist + " — " + m.NowPlaying.Title
 		}
-		progress := ""
+
+		progressW := 0
+		var progressRender string
 		if m.Duration > 0 {
-			progress = "  |  " + fmtTime(m.TimePos) + "/" + fmtTime(m.Duration)
+			tpStr := fmtTime(m.TimePos)
+			durStr := fmtTime(m.Duration)
+			filled := max(0, min(barW, int(m.TimePos/m.Duration*float64(barW))))
+			bar := t.Success.Render(strings.Repeat("-", filled)) + t.Muted.Render(strings.Repeat("-", barW-filled))
+			progressW = lipgloss.Width("  |  " + tpStr + " " + strings.Repeat("-", barW) + " " + durStr)
+			progressRender = t.Muted.Render("  |  ") + t.Muted.Render(tpStr) + " " + bar + " " + t.Muted.Render(durStr)
 		}
-		sep := t.Muted.Render("  |  ")
-		sepW := lipgloss.Width(sep)
-		leftW := lipgloss.Width(left)
-		progressW := lipgloss.Width(progress)
-		maxLabelW := innerWidth - leftW - sepW - rightW - progressW - 4
+
+		maxLabelW := innerWidth - rightW - progressW - 4
 		if maxLabelW > 8 {
 			runes := []rune(label)
 			if len(runes) > maxLabelW {
 				label = string(runes[:maxLabelW-1]) + "…"
 			}
-			progressRender := ""
-			if m.Duration > 0 {
-				progressRender = t.Muted.Render("  |  ") + t.Info.Render(fmtTime(m.TimePos)+"/"+fmtTime(m.Duration))
-			}
-			center = sep + t.Accent.Render(label) + progressRender
+			track := t.Accent.Render(label) + progressRender
+			gap := max(0, innerWidth-lipgloss.Width(track)-rightW)
+			content := track + lipgloss.NewStyle().Width(gap).Render("") + t.Muted.Render(right)
+			return t.Header.Width(width).Height(height).Render(content)
 		}
 	}
 
-	gap := max(0, innerWidth-lipgloss.Width(left)-lipgloss.Width(center)-rightW)
-	content := left + center + lipgloss.NewStyle().Width(gap).Render("") + t.Muted.Render(right)
-
+	gap := max(0, innerWidth-lipgloss.Width(left)-rightW)
+	content := left + lipgloss.NewStyle().Width(gap).Render("") + t.Muted.Render(right)
 	return t.Header.Width(width).Height(height).Render(content)
 }
 
-func fmtTime(secs float64) string {
-	s := int(secs)
-	return fmt.Sprintf("%d:%02d", s/60, s%60)
-}
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
