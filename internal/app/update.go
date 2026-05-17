@@ -103,7 +103,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.logs.Error("toggle pause", err)
 			}
 		} else {
-			if err := player.Play(msg.YoutubeID, msg.Title, msg.Artist, m.downloaded[msg.YoutubeID]); err != nil {
+			if err := player.Play(msg.YoutubeID, msg.Title, msg.Artist, m.downloaded[msg.YoutubeID], 0); err != nil {
 				m.logs.Error("mpv", err)
 			}
 			m.buildQueue(msg.YoutubeID)
@@ -130,6 +130,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.syncDownloadStateToLibrary()
 		return m, nil
 	case quitMsg:
+		player.SavePosition()
 		player.Stop()
 		m.logs.Info("Command executed: Quit")
 		return m, tea.Quit
@@ -327,7 +328,7 @@ func sessionResumeCmd(downloaded map[string]string) tea.Cmd {
 		if s == nil || s.Finished {
 			return nil
 		}
-		_ = player.Play(s.YoutubeID, s.Title, s.Artist, downloaded[s.YoutubeID])
+		_ = player.Play(s.YoutubeID, s.Title, s.Artist, downloaded[s.YoutubeID], s.ResumePos)
 		return nowPlayingTickMsg{}
 	}
 }
@@ -397,7 +398,7 @@ func (m *Model) playNextInQueue() tea.Cmd {
 	}
 	m.queuePos = next
 	t := m.queue[next]
-	if err := player.Play(t.YoutubeID, t.SongTitle, t.Artist, m.downloaded[t.YoutubeID]); err != nil {
+	if err := player.Play(t.YoutubeID, t.SongTitle, t.Artist, m.downloaded[t.YoutubeID], 0); err != nil {
 		m.logs.Error("autoplay", err)
 	}
 	m.nowPlaying = player.NowPlaying()

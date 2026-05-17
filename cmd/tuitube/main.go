@@ -113,8 +113,23 @@ func runStatus(dbPath string, args []string) {
 
 	tp, dur := player.Progress()
 	if *asJSON {
-		fmt.Printf(`{"playing":%v,"paused":%v,"youtube_id":%q,"title":%q,"artist":%q,"time_pos":%.1f,"duration":%.1f}`+"\n",
-			s.Playing, s.Paused, s.YoutubeID, s.Title, s.Artist, tp, dur)
+		pct := 0.0
+		if dur > 0 {
+			pct = tp / dur * 100
+		}
+		fmtTime := func(sec float64) string {
+			s := int(sec)
+			return fmt.Sprintf("%d:%02d", s/60, s%60)
+		}
+		thumbnail := ""
+		if db, err := db.Open(dbPath); err == nil {
+			var t string
+			_ = db.QueryRow("SELECT COALESCE(thumbnail,'') FROM tracks WHERE youtube_id=?", s.YoutubeID).Scan(&t)
+			thumbnail = t
+			db.Close()
+		}
+		fmt.Printf(`{"playing":%v,"paused":%v,"youtube_id":%q,"title":%q,"artist":%q,"thumbnail":%q,"time_pos":%.1f,"duration":%.1f,"progress_pct":%.1f,"time_fmt":%q,"duration_fmt":%q}`+"\n",
+			s.Playing, s.Paused, s.YoutubeID, s.Title, s.Artist, thumbnail, tp, dur, pct, fmtTime(tp), fmtTime(dur))
 		return
 	}
 

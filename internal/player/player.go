@@ -4,6 +4,7 @@ package player
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
@@ -20,18 +21,20 @@ const (
 )
 
 type State struct {
-	YoutubeID string `json:"youtube_id"`
-	Title     string `json:"title"`
-	Artist    string `json:"artist"`
-	Playing   bool   `json:"playing"`
-	Paused    bool   `json:"paused"`
-	Finished  bool   `json:"finished"` // true when mpv exited naturally (track ended)
+	YoutubeID string  `json:"youtube_id"`
+	Title     string  `json:"title"`
+	Artist    string  `json:"artist"`
+	Playing   bool    `json:"playing"`
+	Paused    bool    `json:"paused"`
+	Finished  bool    `json:"finished"`   // true when mpv exited naturally (track ended)
+	ResumePos float64 `json:"resume_pos"` // seconds to resume from on next play; 0 = start
 }
 
 // Play starts or replaces the current track. Kills any existing mpv first.
 // If localPath is non-empty and the file exists, it is played directly;
 // otherwise mpv streams from YouTube.
-func Play(youtubeID, title, artist, localPath string) error {
+// startPos > 0 seeks to that position in seconds before playback begins.
+func Play(youtubeID, title, artist, localPath string, startPos float64) error {
 	Stop()
 
 	source := "https://www.youtube.com/watch?v=" + youtubeID
@@ -40,13 +43,17 @@ func Play(youtubeID, title, artist, localPath string) error {
 			source = localPath
 		}
 	}
-	cmd := exec.Command("mpv",
+	args := []string{
 		"--no-video",
 		"--really-quiet",
 		"--gapless-audio=yes",
-		"--input-ipc-server="+SocketPath,
-		source,
-	)
+		"--input-ipc-server=" + SocketPath,
+	}
+	if startPos > 0 {
+		args = append(args, fmt.Sprintf("--start=%.1f", startPos))
+	}
+	args = append(args, source)
+	cmd := exec.Command("mpv", args...)
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -71,6 +78,7 @@ func Play(youtubeID, title, artist, localPath string) error {
 		Title:     title,
 		Artist:    artist,
 		Playing:   true,
+		// ResumePos intentionally zero — cleared on fresh play
 	})
 }
 
@@ -143,6 +151,18 @@ func writeState(s State) error {
 		return err
 	}
 	return os.WriteFile(StatePath, data, 0644)
+}
+
+// SavePosition reads the current playback position and persists it to state
+// so session resume can restart from the same point.
+func SavePosition() {
+	tp, _ := queryIPCFloat(`{"command":["get_property","time-pos"]}`)
+	if tp <= 0 {
+		return
+	}
+	s := readState()
+	s.ResumePos = tp
+	_ = writeState(s)
 }
 
 // SeekForward seeks 5 seconds forward.
