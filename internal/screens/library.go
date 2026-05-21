@@ -348,8 +348,9 @@ func (l Library) trackRow(t db.Track, selected bool, titleW, artistW, width int)
 	successFg := l.theme.Success.GetForeground()
 
 	rowFg := textFg
+	selFg := l.theme.Selected.GetForeground()
 	if t.IsFavorite || playing || isDownloading || isDownloaded {
-		rowFg = lipgloss.Color("#FFFFFF")
+		rowFg = selFg
 	}
 
 	cell := func(s string, fg, bg color.Color) string {
