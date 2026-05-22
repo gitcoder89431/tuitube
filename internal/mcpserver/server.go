@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/gitcoder89431/tuitube/internal/agentlog"
 	"github.com/gitcoder89431/tuitube/internal/db"
@@ -132,6 +133,16 @@ func (s *Server) Serve() error {
 		mcp.WithNumber("playlist_id", mcp.Required(), mcp.Description("Playlist ID")),
 	), mcp.NewTypedToolHandler(s.listPlaylistTracks))
 
+	srv.AddTool(mcp.NewTool("remove_from_playlist",
+		mcp.WithDescription("Remove one or more tracks from a playlist"),
+		mcp.WithNumber("playlist_id", mcp.Required(), mcp.Description("Playlist ID")),
+		mcp.WithArray("track_ids", mcp.Required(), mcp.Description("Array of track IDs to remove"), mcp.Items(map[string]any{"type": "string"})),
+	), mcp.NewTypedToolHandler(s.removeFromPlaylist))
+
+	srv.AddTool(mcp.NewTool("get_now_playing",
+		mcp.WithDescription("Get current playback state: track info, position, duration, and paused state"),
+	), mcp.NewTypedToolHandler(s.getNowPlaying))
+
 	return server.ServeStdio(srv)
 }
 
@@ -183,12 +194,9 @@ func (s *Server) searchTracks(_ context.Context, _ mcp.CallToolRequest, args sea
 	if limit <= 0 {
 		limit = 30
 	}
-	tracks, err := s.database.ListTracks(args.Query, args.FavoritesOnly && args.Query == "", args.StationID)
+	tracks, err := s.database.ListTracks(args.Query, args.FavoritesOnly, limit, args.StationID)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
-	}
-	if len(tracks) > limit {
-		tracks = tracks[:limit]
 	}
 	return jsonResult(tracks)
 }
@@ -215,7 +223,7 @@ func (s *Server) syncStation(_ context.Context, _ mcp.CallToolRequest, args sync
 		}
 		var buf syncWriter
 		n, err := tubesync.Station(s.database, st, &buf)
-		result := map[string]any{"station": st.Name, "inserted": n, "log": buf.s}
+		result := map[string]any{"station": st.Name, "inserted": n, "log": buf.String()}
 		if err != nil {
 			result["error"] = err.Error()
 		}
@@ -247,7 +255,7 @@ func (s *Server) addStation(_ context.Context, _ mcp.CallToolRequest, args addSt
 
 	result := map[string]any{
 		"station":  station,
-		"log":      buf.s,
+		"log":      buf.String(),
 		"inserted": 0,
 	}
 
@@ -255,7 +263,7 @@ func (s *Server) addStation(_ context.Context, _ mcp.CallToolRequest, args addSt
 		var buf2 syncWriter
 		n, err := tubesync.Station(s.database, station, &buf2)
 		result["inserted"] = n
-		result["sync_log"] = buf2.s
+		result["sync_log"] = buf2.String()
 		if err != nil {
 			result["sync_error"] = err.Error()
 		}
@@ -321,13 +329,9 @@ func (s *Server) createPlaylist(_ context.Context, _ mcp.CallToolRequest, args c
 }
 
 func (s *Server) addToPlaylist(_ context.Context, _ mcp.CallToolRequest, args playlistTrackArgs) (*mcp.CallToolResult, error) {
-	pid := int64(args.PlaylistID)
-	added := 0
-	for _, id := range args.TrackIDs {
-		if err := s.database.AddToPlaylist(pid, id); err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("failed on %s: %v", id, err)), nil
-		}
-		added++
+	added, err := s.database.AddToPlaylistBatch(int64(args.PlaylistID), args.TrackIDs)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("batch insert failed (rolled back): %v", err)), nil
 	}
 	return mcp.NewToolResultText(fmt.Sprintf("added %d tracks", added)), nil
 }
@@ -340,6 +344,35 @@ func (s *Server) listPlaylistTracks(_ context.Context, _ mcp.CallToolRequest, ar
 	return jsonResult(tracks)
 }
 
+func (s *Server) removeFromPlaylist(_ context.Context, _ mcp.CallToolRequest, args playlistTrackArgs) (*mcp.CallToolResult, error) {
+	pid := int64(args.PlaylistID)
+	removed := 0
+	for _, id := range args.TrackIDs {
+		if err := s.database.RemoveFromPlaylist(pid, id); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed on %s: %v", id, err)), nil
+		}
+		removed++
+	}
+	return mcp.NewToolResultText(fmt.Sprintf("removed %d tracks", removed)), nil
+}
+
+func (s *Server) getNowPlaying(_ context.Context, _ mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, error) {
+	state := player.NowPlaying()
+	if state == nil {
+		return jsonResult(map[string]any{"playing": false})
+	}
+	tp, dur := player.Progress()
+	return jsonResult(map[string]any{
+		"playing":    state.Playing,
+		"paused":     state.Paused,
+		"youtube_id": state.YoutubeID,
+		"title":      state.Title,
+		"artist":     state.Artist,
+		"time_pos":   tp,
+		"duration":   dur,
+	})
+}
+
 // --- helpers ---
 
 func jsonResult(v any) (*mcp.CallToolResult, error) {
@@ -350,10 +383,8 @@ func jsonResult(v any) (*mcp.CallToolResult, error) {
 	return mcp.NewToolResultText(string(b)), nil
 }
 
-// syncWriter captures sync log output into a string.
-type syncWriter struct{ s string }
+// syncWriter captures sync log output efficiently.
+type syncWriter struct{ b strings.Builder }
 
-func (w *syncWriter) Write(p []byte) (int, error) {
-	w.s += string(p)
-	return len(p), nil
-}
+func (w *syncWriter) Write(p []byte) (int, error) { return w.b.Write(p) }
+func (w *syncWriter) String() string              { return w.b.String() }

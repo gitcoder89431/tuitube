@@ -465,7 +465,7 @@ func (l Library) loadCmd() tea.Cmd {
 	favOnly := l.favoritesOnly && query == ""
 	database := l.database
 	return func() tea.Msg {
-		tracks, err := database.ListTracks(query, favOnly)
+		tracks, err := database.ListTracks(query, favOnly, 0)
 		return TracksLoadedMsg{Tracks: tracks, Err: err}
 	}
 }

@@ -15,7 +15,9 @@ type Track struct {
 	IsFavorite bool
 }
 
-func (db *DB) ListTracks(query string, favoritesOnly bool, stationID ...string) ([]Track, error) {
+// ListTracks queries the library with optional search, favorites filter, limit, and station filter.
+// limit=0 means no limit (used by TUI). stationID is optional.
+func (db *DB) ListTracks(query string, favoritesOnly bool, limit int, stationID ...string) ([]Track, error) {
 	var rows *sql.Rows
 	var err error
 
@@ -28,16 +30,31 @@ func (db *DB) ListTracks(query string, favoritesOnly bool, stationID ...string) 
 	if sid != "" {
 		stationFilter = " AND t.station_id = ?"
 	}
-	stationArg := func(args ...any) []any {
+	limitClause := ""
+	if limit > 0 {
+		limitClause = " LIMIT ?"
+	}
+
+	// build args slice incrementally
+	buildArgs := func(base []any) []any {
 		if sid != "" {
-			return append(args, sid)
+			base = append(base, sid)
 		}
-		return args
+		if limit > 0 {
+			base = append(base, limit)
+		}
+		return base
 	}
 
 	switch {
 	case query != "":
 		ftsQuery := `"` + strings.ReplaceAll(query, `"`, `""`) + `"*`
+		favJoin := ""
+		queryArgs := []any{favPlaylistID, ftsQuery}
+		if favoritesOnly {
+			favJoin = " JOIN playlist_tracks fav ON fav.track_id = t.id AND fav.playlist_id = ?"
+			queryArgs = []any{favPlaylistID, favPlaylistID, ftsQuery}
+		}
 		rows, err = db.conn.Query(`
 			SELECT t.id, t.youtube_id,
 			       COALESCE(NULLIF(t.song_title,''), t.raw_title),
@@ -46,9 +63,10 @@ func (db *DB) ListTracks(query string, favoritesOnly bool, stationID ...string) 
 			FROM tracks_fts fts
 			JOIN tracks t ON t.rowid = fts.rowid
 			LEFT JOIN playlist_tracks pt ON pt.track_id = t.id AND pt.playlist_id = ?
+			`+favJoin+`
 			WHERE tracks_fts MATCH ?`+stationFilter+`
-			ORDER BY rank
-		`, stationArg(favPlaylistID, ftsQuery)...)
+			ORDER BY rank`+limitClause,
+			buildArgs(queryArgs)...)
 	case favoritesOnly:
 		rows, err = db.conn.Query(`
 			SELECT t.id, t.youtube_id,
@@ -57,9 +75,8 @@ func (db *DB) ListTracks(query string, favoritesOnly bool, stationID ...string) 
 			       1
 			FROM playlist_tracks pt
 			JOIN tracks t ON t.id = pt.track_id
-			WHERE pt.playlist_id = ?`+stationFilter+`
-			ORDER BY pt.added_at DESC
-		`, stationArg(favPlaylistID)...)
+			WHERE pt.playlist_id = ?`+stationFilter+limitClause,
+			buildArgs([]any{favPlaylistID})...)
 	default:
 		rows, err = db.conn.Query(`
 			SELECT t.id, t.youtube_id,
@@ -68,9 +85,8 @@ func (db *DB) ListTracks(query string, favoritesOnly bool, stationID ...string) 
 			       CASE WHEN pt.track_id IS NOT NULL THEN 1 ELSE 0 END
 			FROM tracks t
 			LEFT JOIN playlist_tracks pt ON pt.track_id = t.id AND pt.playlist_id = ?
-			WHERE 1=1`+stationFilter+`
-			ORDER BY t.published_at DESC
-		`, stationArg(favPlaylistID)...)
+			WHERE 1=1`+stationFilter+limitClause,
+			buildArgs([]any{favPlaylistID})...)
 	}
 	if err != nil {
 		return nil, err

@@ -72,6 +72,32 @@ func (db *DB) AddToPlaylist(playlistID int64, trackID string) error {
 	return err
 }
 
+// AddToPlaylistBatch inserts multiple tracks in a single transaction.
+// All-or-nothing: rolls back if any insert fails.
+func (db *DB) AddToPlaylistBatch(playlistID int64, trackIDs []string) (int, error) {
+	tx, err := db.conn.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+	stmt, err := tx.Prepare(`INSERT OR IGNORE INTO playlist_tracks (playlist_id, track_id) VALUES (?, ?)`)
+	if err != nil {
+		return 0, err
+	}
+	defer stmt.Close()
+	added := 0
+	for _, id := range trackIDs {
+		res, err := stmt.Exec(playlistID, id)
+		if err != nil {
+			return 0, err
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			added++
+		}
+	}
+	return added, tx.Commit()
+}
+
 func (db *DB) RemoveFromPlaylist(playlistID int64, trackID string) error {
 	_, err := db.conn.Exec(
 		"DELETE FROM playlist_tracks WHERE playlist_id=? AND track_id=?",

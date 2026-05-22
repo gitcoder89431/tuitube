@@ -41,23 +41,29 @@ func CleanTitle(title string) string {
 	// contains Japanese; otherwise strip the whole group.
 	for _, pair := range bracketPairs {
 		lb, rb := pair[0], pair[1]
+		var out strings.Builder
+		remaining := title
 		for {
-			start := strings.Index(title, lb)
+			start := strings.Index(remaining, lb)
 			if start < 0 {
+				out.WriteString(remaining)
 				break
 			}
-			rest := title[start+len(lb):]
+			rest := remaining[start+len(lb):]
 			end := strings.Index(rest, rb)
 			if end < 0 {
+				out.WriteString(remaining)
 				break
 			}
 			content := rest[:end]
-			var replacement string
+			out.WriteString(remaining[:start])
 			if strings.Contains(strings.ToLower(content), "cover") || japaneseRe.MatchString(content) {
-				replacement = "[" + content + "]"
+				out.WriteString("[" + content + "]")
 			}
-			title = title[:start] + replacement + title[start+len(lb)+end+len(rb):]
+			// advance past the closing bracket to avoid re-scanning replaced content
+			remaining = rest[end+len(rb):]
 		}
+		title = out.String()
 	}
 
 	title = emojiRe.ReplaceAllString(title, "")
