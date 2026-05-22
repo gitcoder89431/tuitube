@@ -13,6 +13,7 @@ import (
 
 	"github.com/gitcoder89431/tuitube/internal/agentlog"
 	"github.com/gitcoder89431/tuitube/internal/app"
+	"github.com/gitcoder89431/tuitube/internal/broadcast"
 	"github.com/gitcoder89431/tuitube/internal/db"
 	"github.com/gitcoder89431/tuitube/internal/mcpserver"
 	"github.com/gitcoder89431/tuitube/internal/player"
@@ -69,6 +70,8 @@ func main() {
 		runBootstrap(*dbPath, args[1:])
 	case "mcp":
 		runMCP(*dbPath)
+	case "serve":
+		runServe(*dbPath, args[1:])
 	case "":
 		runTUI(*dbPath)
 	default:
@@ -90,6 +93,7 @@ subcommands:
   clean           normalise track titles in the DB
   doctor          check mpv, yt-dlp, and DB health
   mcp             start the MCP server (for Claude Code integration)
+  serve           broadcast a playlist as an HTTP radio stream (--playlist ID)
 
 global flags:
   --db PATH       path to user database (default: platform-specific data dir)
@@ -472,4 +476,40 @@ func runAddStation(dbPath string, args []string) {
 	}
 	fmt.Printf("added station %q (id=%s, uploads=%s)\n", station.Name, station.ID, station.UploadsPlaylistID)
 	fmt.Printf("run: tuitube sync --station %s\n", station.ID)
+}
+
+func runServe(dbPath string, args []string) {
+	fs := flag.NewFlagSet("serve", flag.ExitOnError)
+	playlistID := fs.Int64("playlist", 0, "playlist ID to broadcast (required)")
+	port := fs.Int("port", 8080, "port to listen on")
+	lan := fs.Bool("lan", false, "accept connections from LAN (non-loopback)")
+	fs.Parse(args)
+
+	if *playlistID == 0 {
+		fmt.Fprintln(os.Stderr, "usage: tuitube serve --playlist <id> [--port 8080] [--lan]")
+		fmt.Fprintln(os.Stderr, "  use: tuitube status or the TUI playlists screen to find playlist IDs")
+		os.Exit(1)
+	}
+
+	database, err := db.Open(dbPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube serve: open db: %v\n", err)
+		os.Exit(1)
+	}
+	defer database.Close()
+
+	srv := broadcast.New(database, *playlistID, *port, *lan)
+
+	fmt.Println("→ checking playlist tracks...")
+	tracks, err := srv.Prepare(os.Stdout)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube serve: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("→ %d tracks ready\n", len(tracks))
+
+	if err := srv.Serve(tracks, os.Stdout); err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube serve: %v\n", err)
+		os.Exit(1)
+	}
 }
