@@ -116,8 +116,32 @@ func DiscoverStation(channelURL string, w io.Writer) (db.Station, error) {
 	if channelID == "" {
 		return db.Station{}, fmt.Errorf("could not determine channel_id from yt-dlp output")
 	}
+	// If we got a handle (@name) instead of a UC-id, do a second probe via the channel URL
+	if strings.HasPrefix(channelID, "@") {
+		fmt.Fprintf(w, "  got handle %s, re-probing for channel ID...\n", channelID)
+		cmd2 := exec.Command("yt-dlp",
+			"--flat-playlist", "--dump-json",
+			"--playlist-items", "1",
+			"https://www.youtube.com/"+channelID+"/videos",
+		)
+		out2, err := cmd2.Output()
+		if err != nil {
+			return db.Station{}, fmt.Errorf("yt-dlp re-probe for handle: %w", err)
+		}
+		lines2 := strings.Split(strings.TrimSpace(string(out2)), "\n")
+		if len(lines2) > 0 {
+			var v2 ytVideo
+			if err := json.Unmarshal([]byte(lines2[0]), &v2); err == nil {
+				if v2.ChannelID != "" {
+					channelID = v2.ChannelID
+				} else if v2.PlaylistChannelID != "" {
+					channelID = v2.PlaylistChannelID
+				}
+			}
+		}
+	}
 	// Normalise: all YouTube channel IDs start with UC; uploads playlist is UU + rest
-	if len(channelID) < 3 || channelID[:2] != "UC" {
+	if len(channelID) < 2 || channelID[:2] != "UC" {
 		return db.Station{}, fmt.Errorf("unexpected channel_id format: %q", channelID)
 	}
 	uploadsPlaylistID := "UU" + channelID[2:]

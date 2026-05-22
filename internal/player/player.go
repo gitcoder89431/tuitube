@@ -3,6 +3,7 @@
 package player
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -104,8 +105,12 @@ func TogglePause() error {
 	if err := sendIPC(`{"command":["cycle","pause"]}`); err != nil {
 		return err
 	}
+	paused, err := queryIPCBool(`{"command":["get_property","pause"]}`)
+	if err != nil {
+		return err
+	}
 	s := readState()
-	s.Paused = !s.Paused
+	s.Paused = paused
 	return writeState(s)
 }
 
@@ -193,29 +198,46 @@ func sendIPC(cmd string) error {
 	return err
 }
 
-func queryIPCFloat(cmd string) (float64, error) {
+func queryIPC(cmd string) (json.RawMessage, error) {
 	conn, err := net.DialTimeout("unix", SocketPath, 200*time.Millisecond)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	defer conn.Close()
 	conn.SetDeadline(time.Now().Add(300 * time.Millisecond))
 	if _, err := conn.Write([]byte(cmd + "\n")); err != nil {
-		return 0, err
+		return nil, err
 	}
-	buf := make([]byte, 256)
-	n, err := conn.Read(buf)
+	line, err := bufio.NewReader(conn).ReadBytes('\n')
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	var resp struct {
 		Data  json.RawMessage `json:"data"`
 		Error string          `json:"error"`
 	}
-	if err := json.Unmarshal(buf[:n], &resp); err != nil {
+	if err := json.Unmarshal(line, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Data, nil
+}
+
+func queryIPCFloat(cmd string) (float64, error) {
+	data, err := queryIPC(cmd)
+	if err != nil {
 		return 0, err
 	}
 	var val float64
-	json.Unmarshal(resp.Data, &val)
+	json.Unmarshal(data, &val)
+	return val, nil
+}
+
+func queryIPCBool(cmd string) (bool, error) {
+	data, err := queryIPC(cmd)
+	if err != nil {
+		return false, err
+	}
+	var val bool
+	json.Unmarshal(data, &val)
 	return val, nil
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // CatalogVersion is stored in both catalog.db and the user DB to detect upgrades.
@@ -106,17 +107,23 @@ func (db *DB) MergeCatalogFull(catalogPath string, dryRun bool) (MergeResult, er
 	result.CatalogVersion = catVersion
 
 	if dryRun {
-		// count what would change without writing
-		tmpConn, err := Open(catalogPath)
-		if err != nil {
-			return result, err
+		// count only rows that would actually be inserted
+		if strings.ContainsAny(catalogPath, "';") || !strings.HasSuffix(catalogPath, ".db") {
+			return result, fmt.Errorf("catalog path contains unsafe characters: %q", catalogPath)
 		}
-		defer tmpConn.Close()
-		tmpConn.conn.QueryRow("SELECT COUNT(*) FROM stations").Scan(&result.NewStations)
-		tmpConn.conn.QueryRow("SELECT COUNT(*) FROM tracks").Scan(&result.NewTracks)
+		_, err = db.conn.Exec(fmt.Sprintf(`ATTACH DATABASE '%s' AS cat`, catalogPath))
+		if err != nil {
+			return result, fmt.Errorf("attach catalog for dry run: %w", err)
+		}
+		defer db.conn.Exec("DETACH DATABASE cat")
+		db.conn.QueryRow(`SELECT COUNT(*) FROM cat.stations WHERE id NOT IN (SELECT id FROM stations)`).Scan(&result.NewStations)
+		db.conn.QueryRow(`SELECT COUNT(*) FROM cat.tracks WHERE youtube_id NOT IN (SELECT youtube_id FROM tracks)`).Scan(&result.NewTracks)
 		return result, nil
 	}
 
+	if strings.ContainsAny(catalogPath, "';") || !strings.HasSuffix(catalogPath, ".db") {
+		return result, fmt.Errorf("catalog path contains unsafe characters: %q", catalogPath)
+	}
 	_, err = db.conn.Exec(fmt.Sprintf(`ATTACH DATABASE '%s' AS cat`, catalogPath))
 	if err != nil {
 		return result, fmt.Errorf("attach catalog: %w", err)

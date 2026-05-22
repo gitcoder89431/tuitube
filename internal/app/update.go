@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -302,13 +303,13 @@ func (m Model) handleSidebarKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-var downloadPath = func() string {
+func resolveDownloadPath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "Music/tuitube"
+		return "", fmt.Errorf("cannot determine home directory: %w", err)
 	}
-	return home + "/Music/tuitube"
-}()
+	return filepath.Join(home, "Music", "tuitube"), nil
+}
 
 func nowPlayingTick() tea.Cmd {
 	return tea.Tick(time.Second, func(time.Time) tea.Msg { return nowPlayingTickMsg{} })
@@ -335,17 +336,22 @@ func sessionResumeCmd(downloaded map[string]string) tea.Cmd {
 
 func downloadCmd(youtubeID, title, artist string) tea.Cmd {
 	return func() tea.Msg {
-		_ = os.MkdirAll(downloadPath, 0755)
-		filename := sanitizeFilename(artist, title)
-		filepath := downloadPath + "/" + filename + ".mp3"
+		dlPath, err := resolveDownloadPath()
+		if err != nil {
+			return ""
+		}
+		_ = os.MkdirAll(dlPath, 0755)
+		fp := filepath.Join(dlPath, sanitizeFilename(artist, title)+".mp3")
 		url := "https://www.youtube.com/watch?v=" + youtubeID
 		cmd := exec.Command("yt-dlp",
 			"-x", "--audio-format", "mp3",
-			"-o", filepath,
+			"-o", fp,
 			url,
 		)
-		_ = cmd.Run() // block until done so caller gets the finish signal
-		return filepath
+		if err := cmd.Run(); err != nil {
+			return ""
+		}
+		return fp
 	}
 }
 
