@@ -152,7 +152,6 @@ func (l Library) Update(msg tea.Msg) (Screen, tea.Cmd) {
 	return l, nil
 }
 
-// CapturesKey implements tuimod.KeyCapturer.
 // When search is active, all keys go to the library screen before global handlers.
 func (l Library) CapturesKey(msg tea.KeyPressMsg) bool {
 	if l.searchActive {
