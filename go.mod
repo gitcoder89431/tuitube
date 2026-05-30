@@ -6,10 +6,7 @@ require (
 	charm.land/bubbletea/v2 v2.0.6
 	charm.land/lipgloss/v2 v2.0.3
 	github.com/charmbracelet/bubbles v1.0.0
-	github.com/elpdev/tuilayout v0.1.0
-	github.com/elpdev/tuimod v0.1.0
 	github.com/elpdev/tuipalette v0.2.0
-	github.com/elpdev/tuitheme v0.2.2
 	github.com/mark3labs/mcp-go v0.52.0
 	modernc.org/sqlite v1.50.0
 )

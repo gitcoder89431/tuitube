@@ -14,7 +14,7 @@ import (
 	"github.com/gitcoder89431/tuitube/internal/theme"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/elpdev/tuimod"
+	
 )
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -184,7 +184,7 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// If the active screen wants to capture this key (e.g. search input active),
 	// forward directly before any global handler runs.
 	active := m.screens[m.activeScreen]
-	if capturer, ok := active.(tuimod.KeyCapturer); ok && capturer.CapturesKey(msg) {
+	if capturer, ok := active.(screens.KeyCapturer); ok && capturer.CapturesKey(msg) {
 		updated, cmd := active.Update(msg)
 		m.screens[m.activeScreen] = updated
 		return m, cmd

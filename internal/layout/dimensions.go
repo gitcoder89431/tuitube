@@ -1,6 +1,15 @@
 package layout
 
-import "github.com/elpdev/tuilayout"
+type Region struct {
+	Width  int
+	Height int
+}
 
-type Region = tuilayout.Region
-type Dimensions = tuilayout.Dimensions
+type Dimensions struct {
+	Width   int
+	Height  int
+	Header  Region
+	Sidebar Region
+	Main    Region
+	Footer  Region
+}
