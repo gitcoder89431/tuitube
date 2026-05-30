@@ -1,17 +1,13 @@
 package layout
 
-import (
-	"testing"
-
-	"github.com/elpdev/tuilayout"
-)
+import "testing"
 
 func TestCalculateNormalSize(t *testing.T) {
 	dims := Calculate(100, 40, true)
 	if dims.Header.Height != 2 || dims.Footer.Height != 2 {
 		t.Fatalf("unexpected chrome heights: header=%d footer=%d", dims.Header.Height, dims.Footer.Height)
 	}
-	if dims.Sidebar.Width != tuilayout.DefaultSidebarWidth {
+	if dims.Sidebar.Width != 18 {
 		t.Fatalf("unexpected sidebar width: %d", dims.Sidebar.Width)
 	}
 	if dims.Main.Width != 82 || dims.Main.Height != 36 {
