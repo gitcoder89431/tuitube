@@ -1,5 +1,18 @@
 package screens
 
-import "github.com/elpdev/tuimod"
+import (
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/bubbles/key"
+)
 
-type Screen = tuimod.Screen
+type Screen interface {
+	Init() tea.Cmd
+	Update(tea.Msg) (Screen, tea.Cmd)
+	View(width, height int) string
+	Title() string
+	KeyBindings() []key.Binding
+}
+
+type KeyCapturer interface {
+	CapturesKey(tea.KeyPressMsg) bool
+}
