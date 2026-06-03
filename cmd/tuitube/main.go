@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -102,6 +103,7 @@ func runStatus(dbPath string, args []string) {
 	fs.Parse(args)
 
 	p := player.New(player.DefaultConfig())
+	ctx := context.Background()
 	s := p.NowPlaying()
 	if s == nil {
 		if *asJSON {
@@ -112,7 +114,7 @@ func runStatus(dbPath string, args []string) {
 		return
 	}
 
-	tp, dur := p.Progress()
+	tp, dur := p.Progress(ctx)
 	if *asJSON {
 		pct := 0.0
 		if dur > 0 {

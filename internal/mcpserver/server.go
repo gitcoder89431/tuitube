@@ -277,8 +277,8 @@ func (s *Server) addStation(_ context.Context, _ mcp.CallToolRequest, args addSt
 	return jsonResult(result)
 }
 
-func (s *Server) playTrack(_ context.Context, _ mcp.CallToolRequest, args playArgs) (*mcp.CallToolResult, error) {
-	if err := s.player.Play(args.YoutubeID, args.Title, "", "", 0); err != nil {
+func (s *Server) playTrack(ctx context.Context, _ mcp.CallToolRequest, args playArgs) (*mcp.CallToolResult, error) {
+	if err := s.player.Play(ctx, args.YoutubeID, args.Title, "", "", 0); err != nil {
 		return mcp.NewToolResultError("mpv: " + err.Error()), nil
 	}
 	label := args.Title
@@ -289,9 +289,9 @@ func (s *Server) playTrack(_ context.Context, _ mcp.CallToolRequest, args playAr
 	return mcp.NewToolResultText(fmt.Sprintf("now playing: %s", label)), nil
 }
 
-func (s *Server) stopPlayback(_ context.Context, _ mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, error) {
+func (s *Server) stopPlayback(ctx context.Context, _ mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, error) {
 	np := s.player.NowPlaying()
-	s.player.Stop()
+	s.player.Stop(ctx)
 	if np == nil {
 		return mcp.NewToolResultText("nothing was playing"), nil
 	}
@@ -357,12 +357,12 @@ func (s *Server) removeFromPlaylist(_ context.Context, _ mcp.CallToolRequest, ar
 	return mcp.NewToolResultText(fmt.Sprintf("removed %d tracks", removed)), nil
 }
 
-func (s *Server) getNowPlaying(_ context.Context, _ mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, error) {
+func (s *Server) getNowPlaying(ctx context.Context, _ mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, error) {
 	state := s.player.NowPlaying()
 	if state == nil {
 		return jsonResult(map[string]any{"playing": false})
 	}
-	tp, dur := s.player.Progress()
+	tp, dur := s.player.Progress(ctx)
 	return jsonResult(map[string]any{
 		"playing":    state.Playing,
 		"paused":     state.Paused,

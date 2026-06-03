@@ -4,6 +4,7 @@ package player
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -63,8 +64,8 @@ type State struct {
 // If localPath is non-empty and the file exists, it is played directly;
 // otherwise mpv streams from YouTube.
 // startPos > 0 seeks to that position in seconds before playback begins.
-func (p *Player) Play(youtubeID, title, artist, localPath string, startPos float64) error {
-	p.Stop()
+func (p *Player) Play(ctx context.Context, youtubeID, title, artist, localPath string, startPos float64) error {
+	p.Stop(ctx)
 
 	source := "https://www.youtube.com/watch?v=" + youtubeID
 	if localPath != "" {
@@ -82,7 +83,7 @@ func (p *Player) Play(youtubeID, title, artist, localPath string, startPos float
 		args = append(args, fmt.Sprintf("--start=%.1f", startPos))
 	}
 	args = append(args, source)
-	cmd := exec.Command("mpv", args...)
+	cmd := exec.CommandContext(ctx, "mpv", args...)
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -116,8 +117,8 @@ func (p *Player) Play(youtubeID, title, artist, localPath string, startPos float
 }
 
 // Stop kills the current mpv process. Does NOT set Finished — caller stopped it.
-func (p *Player) Stop() {
-	if p.sendIPC(`{"command":["quit"]}`) == nil {
+func (p *Player) Stop(ctx context.Context) {
+	if p.sendIPC(ctx, `{"command":["quit"]}`) == nil {
 		time.Sleep(100 * time.Millisecond)
 	}
 	if data, err := os.ReadFile(p.cfg.PIDPath); err == nil {
@@ -133,11 +134,11 @@ func (p *Player) Stop() {
 }
 
 // TogglePause sends a pause cycle command to mpv and updates state.
-func (p *Player) TogglePause() error {
-	if err := p.sendIPC(`{"command":["cycle","pause"]}`); err != nil {
+func (p *Player) TogglePause(ctx context.Context) error {
+	if err := p.sendIPC(ctx, `{"command":["cycle","pause"]}`); err != nil {
 		return err
 	}
-	paused, err := p.queryIPCBool(`{"command":["get_property","pause"]}`)
+	paused, err := p.queryIPCBool(ctx, `{"command":["get_property","pause"]}`)
 	if err != nil {
 		return err
 	}
@@ -147,6 +148,7 @@ func (p *Player) TogglePause() error {
 }
 
 // NowPlaying returns current state. Returns nil if nothing is playing or finishing.
+// Does not require a context — reads only from the state file.
 func (p *Player) NowPlaying() *State {
 	s := p.readState()
 	if !s.Playing && !s.Finished {
@@ -156,6 +158,7 @@ func (p *Player) NowPlaying() *State {
 }
 
 // IsAlive returns true if the mpv process from the PID file is still running.
+// Does not require a context — reads only from the PID file.
 func (p *Player) IsAlive() bool {
 	data, err := os.ReadFile(p.cfg.PIDPath)
 	if err != nil {
@@ -192,8 +195,8 @@ func (p *Player) writeState(s State) error {
 
 // SavePosition reads the current playback position and persists it to state
 // so session resume can restart from the same point.
-func (p *Player) SavePosition() {
-	tp, _ := p.queryIPCFloat(`{"command":["get_property","time-pos"]}`)
+func (p *Player) SavePosition(ctx context.Context) {
+	tp, _ := p.queryIPCFloat(ctx, `{"command":["get_property","time-pos"]}`)
 	if tp <= 0 {
 		return
 	}
@@ -203,42 +206,44 @@ func (p *Player) SavePosition() {
 }
 
 // SeekForward seeks 5 seconds forward.
-func (p *Player) SeekForward() error {
-	return p.sendIPC(`{"command":["seek",5]}`)
+func (p *Player) SeekForward(ctx context.Context) error {
+	return p.sendIPC(ctx, `{"command":["seek",5]}`)
 }
 
 // SeekBackward seeks 5 seconds backward.
-func (p *Player) SeekBackward() error {
-	return p.sendIPC(`{"command":["seek",-5]}`)
+func (p *Player) SeekBackward(ctx context.Context) error {
+	return p.sendIPC(ctx, `{"command":["seek",-5]}`)
 }
 
 // Progress returns the current playback position and total duration in seconds.
 // Returns zeros if mpv isn't running or the query fails.
-func (p *Player) Progress() (timePos, duration float64) {
-	timePos, _ = p.queryIPCFloat(`{"command":["get_property","time-pos"]}`)
-	duration, _ = p.queryIPCFloat(`{"command":["get_property","duration"]}`)
+func (p *Player) Progress(ctx context.Context) (timePos, duration float64) {
+	timePos, _ = p.queryIPCFloat(ctx, `{"command":["get_property","time-pos"]}`)
+	duration, _ = p.queryIPCFloat(ctx, `{"command":["get_property","duration"]}`)
 	return
 }
 
-// dialIPC connects to the mpv IPC socket, retrying for up to timeout.
-// mpv needs ~100ms after launch before the socket is ready; this prevents
-// the first Progress() or query after Play() from failing silently.
-func (p *Player) dialIPC(timeout time.Duration) (net.Conn, error) {
-	deadline := time.Now().Add(timeout)
+// dialIPC connects to the mpv IPC socket with retry until ctx is cancelled.
+// mpv needs ~100ms after launch before the socket is ready.
+func (p *Player) dialIPC(ctx context.Context) (net.Conn, error) {
 	for {
 		conn, err := net.DialTimeout("unix", p.cfg.SocketPath, 50*time.Millisecond)
 		if err == nil {
 			return conn, nil
 		}
-		if time.Now().After(deadline) {
-			return nil, err
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
 }
 
-func (p *Player) sendIPC(cmd string) error {
-	conn, err := p.dialIPC(200 * time.Millisecond)
+func (p *Player) sendIPC(ctx context.Context, cmd string) error {
+	ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+	defer cancel()
+	conn, err := p.dialIPC(ctx)
 	if err != nil {
 		return err
 	}
@@ -247,13 +252,17 @@ func (p *Player) sendIPC(cmd string) error {
 	return err
 }
 
-func (p *Player) queryIPC(cmd string) (json.RawMessage, error) {
-	conn, err := p.dialIPC(1 * time.Second)
+func (p *Player) queryIPC(ctx context.Context, cmd string) (json.RawMessage, error) {
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	defer cancel()
+	conn, err := p.dialIPC(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	conn.SetDeadline(time.Now().Add(300 * time.Millisecond))
+	if deadline, ok := ctx.Deadline(); ok {
+		conn.SetDeadline(deadline)
+	}
 	if _, err := conn.Write([]byte(cmd + "\n")); err != nil {
 		return nil, err
 	}
@@ -274,8 +283,8 @@ func (p *Player) queryIPC(cmd string) (json.RawMessage, error) {
 	return resp.Data, nil
 }
 
-func (p *Player) queryIPCFloat(cmd string) (float64, error) {
-	data, err := p.queryIPC(cmd)
+func (p *Player) queryIPCFloat(ctx context.Context, cmd string) (float64, error) {
+	data, err := p.queryIPC(ctx, cmd)
 	if err != nil {
 		return 0, err
 	}
@@ -286,8 +295,8 @@ func (p *Player) queryIPCFloat(cmd string) (float64, error) {
 	return val, nil
 }
 
-func (p *Player) queryIPCBool(cmd string) (bool, error) {
-	data, err := p.queryIPC(cmd)
+func (p *Player) queryIPCBool(ctx context.Context, cmd string) (bool, error) {
+	data, err := p.queryIPC(ctx, cmd)
 	if err != nil {
 		return false, err
 	}

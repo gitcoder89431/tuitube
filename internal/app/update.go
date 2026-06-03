@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"context"
+
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/gitcoder89431/tuitube/internal/commands"
@@ -49,7 +51,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.nowPlaying = state
 		if state != nil && state.Playing && !state.Paused {
-			m.timePos, m.duration = m.player.Progress()
+			m.timePos, m.duration = m.player.Progress(context.Background())
 		}
 		m.syncNowPlayingToLibrary()
 		return m, nowPlayingTick()
@@ -91,7 +93,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case screens.TogglePauseMsg:
-		if err := m.player.TogglePause(); err != nil {
+		if err := m.player.TogglePause(context.Background()); err != nil {
 			m.logs.Error("toggle pause", err)
 		}
 		m.nowPlaying = m.player.NowPlaying()
@@ -99,11 +101,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case screens.PlayTrackMsg:
 		// same track → toggle pause instead of restarting
 		if m.nowPlaying != nil && m.nowPlaying.YoutubeID == msg.YoutubeID {
-			if err := m.player.TogglePause(); err != nil {
+			if err := m.player.TogglePause(context.Background()); err != nil {
 				m.logs.Error("toggle pause", err)
 			}
 		} else {
-			if err := m.player.Play(msg.YoutubeID, msg.Title, msg.Artist, m.downloaded[msg.YoutubeID], 0); err != nil {
+			if err := m.player.Play(context.Background(), msg.YoutubeID, msg.Title, msg.Artist, m.downloaded[msg.YoutubeID], 0); err != nil {
 				m.logs.Error("mpv", err)
 			}
 			m.buildQueue(msg.YoutubeID)
@@ -133,8 +135,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// state already updated in downloadResult; nothing to do at app level
 		return m, nil
 	case quitMsg:
-		m.player.SavePosition()
-		m.player.Stop()
+		m.player.SavePosition(context.Background())
+		m.player.Stop(context.Background())
 		m.logs.Info("Command executed: Quit")
 		return m, tea.Quit
 	case commandsExecutedMsg:
@@ -158,7 +160,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if key.Matches(msg, m.keys.ForceQuit) {
-		m.player.Stop()
+		m.player.Stop(context.Background())
 		return m, tea.Quit
 	}
 
@@ -200,10 +202,10 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Next):
 		return m, m.playNextInQueue()
 	case key.Matches(msg, m.keys.SeekForward):
-		_ = m.player.SeekForward()
+		_ = m.player.SeekForward(context.Background())
 		return m, nil
 	case key.Matches(msg, m.keys.SeekBackward):
-		_ = m.player.SeekBackward()
+		_ = m.player.SeekBackward(context.Background())
 		return m, nil
 	case key.Matches(msg, m.keys.CycleTheme):
 		themes := theme.BuiltIns()
@@ -238,7 +240,7 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case key.Matches(msg, m.keys.Quit):
-		m.player.Stop()
+		m.player.Stop(context.Background())
 		return m, tea.Quit
 	}
 
@@ -331,7 +333,7 @@ func sessionResumeCmd(p *player.Player, downloaded map[string]string) tea.Cmd {
 		if s == nil || s.Finished {
 			return nil
 		}
-		_ = p.Play(s.YoutubeID, s.Title, s.Artist, downloaded[s.YoutubeID], s.ResumePos)
+		_ = p.Play(context.Background(), s.YoutubeID, s.Title, s.Artist, downloaded[s.YoutubeID], s.ResumePos)
 		return nowPlayingTickMsg{}
 	}
 }
@@ -405,14 +407,14 @@ func (m *Model) buildQueue(youtubeID string) {
 func (m *Model) playNextInQueue() tea.Cmd {
 	next := m.queuePos + 1
 	if next >= len(m.queue) {
-		m.player.Stop()
+		m.player.Stop(context.Background())
 		m.nowPlaying = nil
 		m.syncNowPlayingToLibrary()
 		return nowPlayingTick()
 	}
 	m.queuePos = next
 	t := m.queue[next]
-	if err := m.player.Play(t.YoutubeID, t.SongTitle, t.Artist, m.downloaded[t.YoutubeID], 0); err != nil {
+	if err := m.player.Play(context.Background(), t.YoutubeID, t.SongTitle, t.Artist, m.downloaded[t.YoutubeID], 0); err != nil {
 		m.logs.Error("autoplay", err)
 	}
 	m.nowPlaying = m.player.NowPlaying()
