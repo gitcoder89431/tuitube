@@ -8,13 +8,12 @@ import (
 	"strings"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/gitcoder89431/tuitube/internal/commands"
 	"github.com/gitcoder89431/tuitube/internal/player"
 	"github.com/gitcoder89431/tuitube/internal/screens"
 	"github.com/gitcoder89431/tuitube/internal/theme"
-	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/bubbles/key"
-	
 )
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -115,20 +114,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case screens.DownloadTrackMsg:
 		m.downloading[msg.YoutubeID] = true
 		m.syncDownloadStateToLibrary()
-		youtubeID, title, artist := msg.YoutubeID, msg.Title, msg.Artist
-		database := m.database
+		return m, downloadCmd(msg.YoutubeID, msg.Title, msg.Artist)
+	case downloadResult:
+		if msg.err != nil {
+			m.logs.Error("download", msg.err)
+		} else if m.database != nil {
+			_ = m.database.MarkDownloaded(msg.youtubeID, msg.filepath)
+		}
+		delete(m.downloading, msg.youtubeID)
+		if msg.filepath != "" {
+			m.downloaded[msg.youtubeID] = msg.filepath
+		}
+		m.syncDownloadStateToLibrary()
 		return m, func() tea.Msg {
-			result := downloadCmd(youtubeID, title, artist)()
-			fp, _ := result.(string)
-			if fp != "" {
-				_ = database.MarkDownloaded(youtubeID, fp)
-			}
-			return screens.DownloadFinishedMsg{YoutubeID: youtubeID, Filepath: fp}
+			return screens.DownloadFinishedMsg{YoutubeID: msg.youtubeID, Filepath: msg.filepath}
 		}
 	case screens.DownloadFinishedMsg:
-		delete(m.downloading, msg.YoutubeID)
-		m.downloaded[msg.YoutubeID] = msg.Filepath
-		m.syncDownloadStateToLibrary()
+		// state already updated in downloadResult; nothing to do at app level
 		return m, nil
 	case quitMsg:
 		player.SavePosition()
@@ -334,11 +336,17 @@ func sessionResumeCmd(downloaded map[string]string) tea.Cmd {
 	}
 }
 
+type downloadResult struct {
+	youtubeID string
+	filepath  string
+	err       error
+}
+
 func downloadCmd(youtubeID, title, artist string) tea.Cmd {
 	return func() tea.Msg {
 		dlPath, err := resolveDownloadPath()
 		if err != nil {
-			return ""
+			return downloadResult{youtubeID: youtubeID, err: err}
 		}
 		_ = os.MkdirAll(dlPath, 0755)
 		fp := filepath.Join(dlPath, sanitizeFilename(artist, title)+".mp3")
@@ -349,9 +357,9 @@ func downloadCmd(youtubeID, title, artist string) tea.Cmd {
 			url,
 		)
 		if err := cmd.Run(); err != nil {
-			return ""
+			return downloadResult{youtubeID: youtubeID, err: err}
 		}
-		return fp
+		return downloadResult{youtubeID: youtubeID, filepath: fp}
 	}
 }
 

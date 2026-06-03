@@ -6,11 +6,11 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/gitcoder89431/tuitube/internal/db"
-	"github.com/gitcoder89431/tuitube/internal/theme"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/gitcoder89431/tuitube/internal/db"
+	"github.com/gitcoder89431/tuitube/internal/theme"
 )
 
 // PlayTrackMsg asks the app to start streaming a track via mpv.
@@ -34,7 +34,6 @@ type DownloadFinishedMsg struct {
 	YoutubeID string
 	Filepath  string // empty if download failed
 }
-
 
 // TracksLoadedMsg carries the result of a DB track query.
 type TracksLoadedMsg struct {
@@ -508,4 +507,3 @@ func clamp(v, lo, hi int) int {
 	}
 	return v
 }
-

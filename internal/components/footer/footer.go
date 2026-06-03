@@ -3,8 +3,8 @@ package footer
 import (
 	"strings"
 
-	"github.com/gitcoder89431/tuitube/internal/theme"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/gitcoder89431/tuitube/internal/theme"
 )
 
 func View(bindings []key.Binding, width, height int, t theme.Theme) string {

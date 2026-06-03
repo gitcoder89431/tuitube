@@ -104,9 +104,9 @@ func (m *innerPalette) refilter() {
 	}
 }
 
-func (m innerPalette) Action() widgetAction     { return m.lastAction }
-func (m *innerPalette) SetStyles(s Styles)      { m.styles = s }
-func (m *innerPalette) ClearAction()            { m.lastAction = widgetAction{} }
+func (m innerPalette) Action() widgetAction { return m.lastAction }
+func (m *innerPalette) SetStyles(s Styles)  { m.styles = s }
+func (m *innerPalette) ClearAction()        { m.lastAction = widgetAction{} }
 
 func (m *innerPalette) Reset(ctx Context) {
 	m.ctx = ctx

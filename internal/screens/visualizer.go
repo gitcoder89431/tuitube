@@ -34,9 +34,9 @@ func (m VisMode) Next() VisMode { return (m + 1) % visModeCount }
 // Colors are pulled from the theme so it adapts to any palette.
 func RenderMatrix(width, height int, frame uint64, t theme.Theme) string {
 	// extract fg colors once — avoids per-cell lipgloss.Style.Render overhead
-	headFg := t.Text.GetForeground()    // bright leading character
-	midFg := t.Accent.GetForeground()  // near trail
-	tailFg := t.Muted.GetForeground()  // fading tail
+	headFg := t.Text.GetForeground()  // bright leading character
+	midFg := t.Accent.GetForeground() // near trail
+	tailFg := t.Muted.GetForeground() // fading tail
 
 	cell := func(ch rune, fg color.Color) string {
 		return lipgloss.NewStyle().Foreground(fg).Render(string(ch))
@@ -86,9 +86,9 @@ var brailleBit = [4][2]rune{
 // floor scrolling toward the viewer, and a slow sine wave at the horizon.
 // Uses braille characters for sub-cell resolution. Ported from cliamp (MIT).
 func RenderRetro(width, height int, frame uint64, t theme.Theme) string {
-	gridFg := t.Muted.GetForeground()   // perspective grid
-	sunFg := t.Warn.GetForeground()     // sunset amber/orange
-	waveFg := t.Accent.GetForeground()  // neon horizon wave
+	gridFg := t.Muted.GetForeground()  // perspective grid
+	sunFg := t.Warn.GetForeground()    // sunset amber/orange
+	waveFg := t.Accent.GetForeground() // neon horizon wave
 
 	dotRows := height * 4
 	dotCols := width * 2

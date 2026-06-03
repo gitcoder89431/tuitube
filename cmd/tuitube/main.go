@@ -11,13 +11,13 @@ import (
 	"runtime"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/gitcoder89431/tuitube/internal/agentlog"
 	"github.com/gitcoder89431/tuitube/internal/app"
 	"github.com/gitcoder89431/tuitube/internal/db"
 	"github.com/gitcoder89431/tuitube/internal/mcpserver"
 	"github.com/gitcoder89431/tuitube/internal/player"
 	tubesync "github.com/gitcoder89431/tuitube/internal/sync"
-	tea "charm.land/bubbletea/v2"
 )
 
 var (
@@ -122,11 +122,11 @@ func runStatus(dbPath string, args []string) {
 			return fmt.Sprintf("%d:%02d", s/60, s%60)
 		}
 		thumbnail := ""
-		if db, err := db.Open(dbPath); err == nil {
+		if database, err := db.Open(dbPath); err == nil {
+			defer database.Close()
 			var t string
-			_ = db.QueryRow("SELECT COALESCE(thumbnail,'') FROM tracks WHERE youtube_id=?", s.YoutubeID).Scan(&t)
+			_ = database.QueryRow("SELECT COALESCE(thumbnail,'') FROM tracks WHERE youtube_id=?", s.YoutubeID).Scan(&t)
 			thumbnail = t
-			db.Close()
 		}
 		fmt.Printf(`{"playing":%v,"paused":%v,"youtube_id":%q,"title":%q,"artist":%q,"thumbnail":%q,"time_pos":%.1f,"duration":%.1f,"progress_pct":%.1f,"time_fmt":%q,"duration_fmt":%q}`+"\n",
 			s.Playing, s.Paused, s.YoutubeID, s.Title, s.Artist, thumbnail, tp, dur, pct, fmtTime(tp), fmtTime(dur))

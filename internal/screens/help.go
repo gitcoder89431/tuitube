@@ -23,10 +23,10 @@ func (h Help) WithTheme(t theme.Theme) Help {
 	return h
 }
 
-func (h Help) Init() tea.Cmd                             { return nil }
-func (h Help) Update(msg tea.Msg) (Screen, tea.Cmd)     { return h, nil }
-func (h Help) Title() string                             { return "Help" }
-func (h Help) KeyBindings() []key.Binding                { return nil }
+func (h Help) Init() tea.Cmd                        { return nil }
+func (h Help) Update(msg tea.Msg) (Screen, tea.Cmd) { return h, nil }
+func (h Help) Title() string                        { return "Help" }
+func (h Help) KeyBindings() []key.Binding           { return nil }
 
 func (h Help) View(width, height int) string {
 	rule := func(label string) string {

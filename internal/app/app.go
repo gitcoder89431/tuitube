@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"sort"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/gitcoder89431/tuitube/internal/commands"
 	"github.com/gitcoder89431/tuitube/internal/db"
 	"github.com/gitcoder89431/tuitube/internal/debug"
 	"github.com/gitcoder89431/tuitube/internal/player"
 	"github.com/gitcoder89431/tuitube/internal/screens"
 	"github.com/gitcoder89431/tuitube/internal/theme"
-	tea "charm.land/bubbletea/v2"
 )
 
 const defaultScreen = "library"
@@ -44,11 +44,11 @@ type Model struct {
 	meta     BuildInfo
 	database *db.DB
 
-	nowPlaying      *player.State
-	timePos         float64
-	duration        float64
-	visMode  screens.VisMode
-	visFrame uint64
+	nowPlaying  *player.State
+	timePos     float64
+	duration    float64
+	visMode     screens.VisMode
+	visFrame    uint64
 	queue       []db.Track
 	queuePos    int
 	downloading map[string]bool
@@ -82,8 +82,8 @@ func New(meta BuildInfo, database *db.DB) Model {
 		logs:         log,
 		meta:         meta,
 		database:     database,
-		downloading: make(map[string]bool),
-		downloaded:  downloaded,
+		downloading:  make(map[string]bool),
+		downloaded:   downloaded,
 	}
 
 	m.registerScreens()
@@ -124,13 +124,8 @@ func (m *Model) registerScreens() {
 // Add new primary screens to the preferred slice to control their position;
 // all other registered screens are appended in sorted order after them.
 func (m *Model) refreshScreenOrder() {
-	m.screenOrder = m.screenOrder[:0]
-	for id := range m.screens {
-		m.screenOrder = append(m.screenOrder, id)
-	}
-	sort.Strings(m.screenOrder)
 	preferred := []string{"library", "playlists", "settings", "help", "logs"}
-	ordered := make([]string, 0, len(m.screenOrder))
+	ordered := make([]string, 0, len(m.screens))
 	seen := make(map[string]bool)
 	for _, id := range preferred {
 		if _, ok := m.screens[id]; ok {
@@ -138,12 +133,14 @@ func (m *Model) refreshScreenOrder() {
 			seen[id] = true
 		}
 	}
-	for _, id := range m.screenOrder {
+	var rest []string
+	for id := range m.screens {
 		if !seen[id] {
-			ordered = append(ordered, id)
+			rest = append(rest, id)
 		}
 	}
-	m.screenOrder = ordered
+	sort.Strings(rest)
+	m.screenOrder = append(ordered, rest...)
 }
 
 func (m *Model) registerCommands() {

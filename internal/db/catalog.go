@@ -75,9 +75,9 @@ func (db *DB) CatalogVersion() string {
 
 // MergeResult summarises what changed during a catalog merge.
 type MergeResult struct {
-	NewStations int
-	NewTracks   int
-	NewPlaylists int
+	NewStations    int
+	NewTracks      int
+	NewPlaylists   int
 	CatalogVersion string
 }
 
@@ -89,10 +89,21 @@ func (db *DB) MergeCatalog(catalogPath string) error {
 	return err
 }
 
+func validateCatalogPath(p string) error {
+	if strings.ContainsAny(p, "';") || !strings.HasSuffix(p, ".db") {
+		return fmt.Errorf("catalog path contains unsafe characters: %q", p)
+	}
+	return nil
+}
+
 // MergeCatalogFull merges the catalog and returns a summary of changes.
 // Pass dryRun=true to see what would change without writing anything.
 func (db *DB) MergeCatalogFull(catalogPath string, dryRun bool) (MergeResult, error) {
 	var result MergeResult
+
+	if err := validateCatalogPath(catalogPath); err != nil {
+		return result, err
+	}
 
 	catConn, err := Open(catalogPath)
 	if err != nil {
@@ -107,10 +118,6 @@ func (db *DB) MergeCatalogFull(catalogPath string, dryRun bool) (MergeResult, er
 	result.CatalogVersion = catVersion
 
 	if dryRun {
-		// count only rows that would actually be inserted
-		if strings.ContainsAny(catalogPath, "';") || !strings.HasSuffix(catalogPath, ".db") {
-			return result, fmt.Errorf("catalog path contains unsafe characters: %q", catalogPath)
-		}
 		_, err = db.conn.Exec(fmt.Sprintf(`ATTACH DATABASE '%s' AS cat`, catalogPath))
 		if err != nil {
 			return result, fmt.Errorf("attach catalog for dry run: %w", err)
@@ -121,9 +128,6 @@ func (db *DB) MergeCatalogFull(catalogPath string, dryRun bool) (MergeResult, er
 		return result, nil
 	}
 
-	if strings.ContainsAny(catalogPath, "';") || !strings.HasSuffix(catalogPath, ".db") {
-		return result, fmt.Errorf("catalog path contains unsafe characters: %q", catalogPath)
-	}
 	_, err = db.conn.Exec(fmt.Sprintf(`ATTACH DATABASE '%s' AS cat`, catalogPath))
 	if err != nil {
 		return result, fmt.Errorf("attach catalog: %w", err)

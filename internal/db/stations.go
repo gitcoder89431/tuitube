@@ -3,9 +3,9 @@ package db
 import "database/sql"
 
 type Station struct {
-	ID               string
-	Name             string
-	YoutubeChannelID string
+	ID                string
+	Name              string
+	YoutubeChannelID  string
 	UploadsPlaylistID string
 }
 

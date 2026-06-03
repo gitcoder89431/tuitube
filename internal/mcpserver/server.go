@@ -160,9 +160,9 @@ type syncArgs struct {
 }
 
 type addStationArgs struct {
-	URL      string `json:"url"`
-	Name     string `json:"name"`
-	SyncNow  bool   `json:"sync_now"`
+	URL     string `json:"url"`
+	Name    string `json:"name"`
+	SyncNow bool   `json:"sync_now"`
 }
 
 type playArgs struct {

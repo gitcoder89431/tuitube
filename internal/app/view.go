@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/gitcoder89431/tuitube/internal/components/footer"
 	"github.com/gitcoder89431/tuitube/internal/components/header"
 	"github.com/gitcoder89431/tuitube/internal/components/modal"
 	"github.com/gitcoder89431/tuitube/internal/components/sidebar"
 	"github.com/gitcoder89431/tuitube/internal/layout"
 	"github.com/gitcoder89431/tuitube/internal/screens"
-	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/bubbles/key"
 )
 
 func (m Model) View() tea.View {

@@ -8,11 +8,11 @@ var cleanTitleTests = []struct {
 }{
 	{"Song Title 🎵", "Song Title"},
 	{"Song [Official MV]", "Song"},
-	{"Song【Cover】", "Song [Cover]"},      // non-ASCII bracket → preserved as [Cover]
+	{"Song【Cover】", "Song [Cover]"}, // non-ASCII bracket → preserved as [Cover]
 	{"Song【日本語】", "Song [日本語]"},
 	{"Song *FREE DOWNLOAD*", "Song"},
 	{"Song_Title", "Song-Title"},
-	{"Song[Lyrics]", "Song"},              // stripped, no remaining [ so no space injected
+	{"Song[Lyrics]", "Song"}, // stripped, no remaining [ so no space injected
 	{"  Song   Title  ", "Song Title"},
 	{"Song ♪ Title", "Song Title"},
 	{"Song「カバー」", "Song [カバー]"},

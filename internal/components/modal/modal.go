@@ -1,8 +1,8 @@
 package modal
 
 import (
-	"github.com/gitcoder89431/tuitube/internal/theme"
 	"charm.land/lipgloss/v2"
+	"github.com/gitcoder89431/tuitube/internal/theme"
 )
 
 func Overlay(base, content string, width, height int, _ theme.Theme) string {

@@ -10,15 +10,15 @@ const (
 )
 
 type KeyMap struct {
-	Quit       key.Binding
-	ForceQuit  key.Binding
-	Commands   key.Binding
-	Help       key.Binding
-	Cancel     key.Binding
-	Focus      key.Binding
-	Up         key.Binding
-	Down       key.Binding
-	Enter      key.Binding
+	Quit         key.Binding
+	ForceQuit    key.Binding
+	Commands     key.Binding
+	Help         key.Binding
+	Cancel       key.Binding
+	Focus        key.Binding
+	Up           key.Binding
+	Down         key.Binding
+	Enter        key.Binding
 	Visualizer   key.Binding
 	CycleTheme   key.Binding
 	SeekForward  key.Binding
@@ -29,16 +29,16 @@ type KeyMap struct {
 
 func DefaultKeyMap() KeyMap {
 	return KeyMap{
-		Quit:      key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
-		ForceQuit: key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "quit")),
-		Commands:  key.NewBinding(key.WithKeys("ctrl+k"), key.WithHelp("ctrl+k", "commands")),
-		Help:      key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
-		Cancel:    key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "close")),
-		Focus:     key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "focus")),
-		Up:        key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("up/k", "up")),
-		Down:      key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("down/j", "down")),
-		Enter:      key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
-		Visualizer:  key.NewBinding(key.WithKeys("v"), key.WithHelp("v", "visualizer")),
+		Quit:         key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+		ForceQuit:    key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "quit")),
+		Commands:     key.NewBinding(key.WithKeys("ctrl+k"), key.WithHelp("ctrl+k", "commands")),
+		Help:         key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
+		Cancel:       key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "close")),
+		Focus:        key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "focus")),
+		Up:           key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("up/k", "up")),
+		Down:         key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("down/j", "down")),
+		Enter:        key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
+		Visualizer:   key.NewBinding(key.WithKeys("v"), key.WithHelp("v", "visualizer")),
 		CycleTheme:   key.NewBinding(key.WithKeys("ctrl+t"), key.WithHelp("ctrl+t", "cycle theme")),
 		SeekForward:  key.NewBinding(key.WithKeys("right"), key.WithHelp("→", "+5s")),
 		SeekBackward: key.NewBinding(key.WithKeys("left"), key.WithHelp("←", "-5s")),

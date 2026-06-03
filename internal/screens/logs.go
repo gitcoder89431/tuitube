@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gitcoder89431/tuitube/internal/agentlog"
-	"github.com/gitcoder89431/tuitube/internal/debug"
-	"github.com/gitcoder89431/tuitube/internal/theme"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/gitcoder89431/tuitube/internal/agentlog"
+	"github.com/gitcoder89431/tuitube/internal/debug"
+	"github.com/gitcoder89431/tuitube/internal/theme"
 )
 
 type logLine struct {
@@ -123,4 +123,3 @@ func (l Logs) KeyBindings() []key.Binding {
 		key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("down/j", "scroll down")),
 	}
 }
-

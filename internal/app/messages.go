@@ -33,4 +33,3 @@ type playlistOpenMsg struct {
 	title  string
 	tracks []db.Track
 }
-

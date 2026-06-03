@@ -59,18 +59,22 @@ func Play(youtubeID, title, artist, localPath string, startPos float64) error {
 		return err
 	}
 
-	_ = os.WriteFile(PIDPath, []byte(strconv.Itoa(cmd.Process.Pid)), 0644)
+	pid := cmd.Process.Pid
+	_ = os.WriteFile(PIDPath, []byte(strconv.Itoa(pid)), 0644)
 
 	go func() {
 		cmd.Wait()
-		// Only mark finished if we weren't manually stopped (PID file still exists)
-		if _, err := os.Stat(PIDPath); err == nil {
-			_ = os.Remove(PIDPath)
-			_ = os.Remove(SocketPath)
-			s := readState()
-			s.Playing = false
-			s.Finished = true
-			_ = writeState(s)
+		// Only mark finished if the PID file still points to our process,
+		// not a newer track that started before we exited.
+		if data, err := os.ReadFile(PIDPath); err == nil {
+			if strings.TrimSpace(string(data)) == strconv.Itoa(pid) {
+				_ = os.Remove(PIDPath)
+				_ = os.Remove(SocketPath)
+				s := readState()
+				s.Playing = false
+				s.Finished = true
+				_ = writeState(s)
+			}
 		}
 	}()
 
@@ -219,6 +223,9 @@ func queryIPC(cmd string) (json.RawMessage, error) {
 	if err := json.Unmarshal(line, &resp); err != nil {
 		return nil, err
 	}
+	if resp.Error != "" && resp.Error != "success" {
+		return nil, fmt.Errorf("mpv ipc error: %s", resp.Error)
+	}
 	return resp.Data, nil
 }
 
@@ -228,7 +235,9 @@ func queryIPCFloat(cmd string) (float64, error) {
 		return 0, err
 	}
 	var val float64
-	json.Unmarshal(data, &val)
+	if err := json.Unmarshal(data, &val); err != nil {
+		return 0, err
+	}
 	return val, nil
 }
 
@@ -238,6 +247,8 @@ func queryIPCBool(cmd string) (bool, error) {
 		return false, err
 	}
 	var val bool
-	json.Unmarshal(data, &val)
+	if err := json.Unmarshal(data, &val); err != nil {
+		return false, err
+	}
 	return val, nil
 }

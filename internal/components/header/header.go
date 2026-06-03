@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/gitcoder89431/tuitube/internal/player"
 	"github.com/gitcoder89431/tuitube/internal/theme"
-	"charm.land/lipgloss/v2"
 )
 
 type Model struct {
@@ -72,5 +72,3 @@ func View(m Model, width, height int, t theme.Theme) string {
 	content := left + lipgloss.NewStyle().Width(gap).Render("") + t.Muted.Render(right)
 	return t.Header.Width(width).Height(height).Render(content)
 }
-
-

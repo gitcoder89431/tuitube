@@ -5,11 +5,11 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/gitcoder89431/tuitube/internal/db"
-	"github.com/gitcoder89431/tuitube/internal/theme"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/gitcoder89431/tuitube/internal/db"
+	"github.com/gitcoder89431/tuitube/internal/theme"
 )
 
 // PlaylistSelectedMsg asks the app to load a playlist into the library.
@@ -26,21 +26,21 @@ type PlaylistsLoadedMsg struct {
 }
 
 type playlistEntry struct {
-	label      string
-	count      int
-	isHeader   bool
-	loader     func() ([]db.Track, error)
+	label    string
+	count    int
+	isHeader bool
+	loader   func() ([]db.Track, error)
 }
 
 type Playlists struct {
 	database *db.DB
 	theme    theme.Theme
 
-	entries     []playlistEntry
-	cursor      int
-	creating    bool   // name-entry mode for new playlist
-	newName     string
-	err         error
+	entries  []playlistEntry
+	cursor   int
+	creating bool // name-entry mode for new playlist
+	newName  string
+	err      error
 }
 
 func NewPlaylists(database *db.DB, t theme.Theme) Playlists {
