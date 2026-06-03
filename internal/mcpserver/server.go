@@ -16,10 +16,11 @@ import (
 
 type Server struct {
 	database *db.DB
+	player   *player.Player
 }
 
-func New(database *db.DB) *Server {
-	return &Server{database: database}
+func New(database *db.DB, p *player.Player) *Server {
+	return &Server{database: database, player: p}
 }
 
 const onboarding = `# tuitube — Agent Onboarding
@@ -277,7 +278,7 @@ func (s *Server) addStation(_ context.Context, _ mcp.CallToolRequest, args addSt
 }
 
 func (s *Server) playTrack(_ context.Context, _ mcp.CallToolRequest, args playArgs) (*mcp.CallToolResult, error) {
-	if err := player.Play(args.YoutubeID, args.Title, "", "", 0); err != nil {
+	if err := s.player.Play(args.YoutubeID, args.Title, "", "", 0); err != nil {
 		return mcp.NewToolResultError("mpv: " + err.Error()), nil
 	}
 	label := args.Title
@@ -289,8 +290,8 @@ func (s *Server) playTrack(_ context.Context, _ mcp.CallToolRequest, args playAr
 }
 
 func (s *Server) stopPlayback(_ context.Context, _ mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, error) {
-	np := player.NowPlaying()
-	player.Stop()
+	np := s.player.NowPlaying()
+	s.player.Stop()
 	if np == nil {
 		return mcp.NewToolResultText("nothing was playing"), nil
 	}
@@ -357,11 +358,11 @@ func (s *Server) removeFromPlaylist(_ context.Context, _ mcp.CallToolRequest, ar
 }
 
 func (s *Server) getNowPlaying(_ context.Context, _ mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, error) {
-	state := player.NowPlaying()
+	state := s.player.NowPlaying()
 	if state == nil {
 		return jsonResult(map[string]any{"playing": false})
 	}
-	tp, dur := player.Progress()
+	tp, dur := s.player.Progress()
 	return jsonResult(map[string]any{
 		"playing":    state.Playing,
 		"paused":     state.Paused,

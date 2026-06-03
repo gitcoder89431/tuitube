@@ -44,6 +44,7 @@ type Model struct {
 	meta     BuildInfo
 	database *db.DB
 
+	player      *player.Player
 	nowPlaying  *player.State
 	timePos     float64
 	duration    float64
@@ -55,7 +56,7 @@ type Model struct {
 	downloaded  map[string]string // youtube_id → local filepath
 }
 
-func New(meta BuildInfo, database *db.DB) Model {
+func New(meta BuildInfo, database *db.DB, p *player.Player) Model {
 	log := debug.NewLog()
 	log.Info("App started")
 
@@ -82,6 +83,7 @@ func New(meta BuildInfo, database *db.DB) Model {
 		logs:         log,
 		meta:         meta,
 		database:     database,
+		player:       p,
 		downloading:  make(map[string]bool),
 		downloaded:   downloaded,
 	}
@@ -97,7 +99,7 @@ func (m Model) Init() tea.Cmd {
 	cmds := []tea.Cmd{
 		func() tea.Msg { return tea.RequestWindowSize() },
 		nowPlayingTick(),
-		sessionResumeCmd(m.downloaded),
+		sessionResumeCmd(m.player, m.downloaded),
 	}
 	for _, screen := range m.screens {
 		cmds = append(cmds, screen.Init())

@@ -101,7 +101,8 @@ func runStatus(dbPath string, args []string) {
 	asJSON := fs.Bool("json", false, "output as JSON")
 	fs.Parse(args)
 
-	s := player.NowPlaying()
+	p := player.New(player.DefaultConfig())
+	s := p.NowPlaying()
 	if s == nil {
 		if *asJSON {
 			fmt.Println(`{"playing":false}`)
@@ -111,7 +112,7 @@ func runStatus(dbPath string, args []string) {
 		return
 	}
 
-	tp, dur := player.Progress()
+	tp, dur := p.Progress()
 	if *asJSON {
 		pct := 0.0
 		if dur > 0 {
@@ -294,8 +295,9 @@ func runTUI(dbPath string) {
 	}
 	autoMerge(dbPath)
 
+	p := player.New(player.DefaultConfig())
 	meta := app.BuildInfo{Version: version, Commit: commit, Date: date}
-	program := tea.NewProgram(app.New(meta, database))
+	program := tea.NewProgram(app.New(meta, database, p))
 	if _, err := program.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "tuitube: %v\n", err)
 		os.Exit(1)
@@ -435,7 +437,7 @@ func runMCP(dbPath string) {
 		os.Exit(1)
 	}
 	defer database.Close()
-	if err := mcpserver.New(database).Serve(); err != nil {
+	if err := mcpserver.New(database, player.New(player.DefaultConfig())).Serve(); err != nil {
 		fmt.Fprintf(os.Stderr, "tuitube mcp: %v\n", err)
 		os.Exit(1)
 	}

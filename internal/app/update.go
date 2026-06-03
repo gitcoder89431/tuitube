@@ -43,13 +43,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case nowPlayingTickMsg:
-		state := player.NowPlaying()
+		state := m.player.NowPlaying()
 		if state != nil && state.Finished {
 			return m, m.playNextInQueue()
 		}
 		m.nowPlaying = state
 		if state != nil && state.Playing && !state.Paused {
-			m.timePos, m.duration = player.Progress()
+			m.timePos, m.duration = m.player.Progress()
 		}
 		m.syncNowPlayingToLibrary()
 		return m, nowPlayingTick()
@@ -91,24 +91,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case screens.TogglePauseMsg:
-		if err := player.TogglePause(); err != nil {
+		if err := m.player.TogglePause(); err != nil {
 			m.logs.Error("toggle pause", err)
 		}
-		m.nowPlaying = player.NowPlaying()
+		m.nowPlaying = m.player.NowPlaying()
 		return m, nil
 	case screens.PlayTrackMsg:
 		// same track → toggle pause instead of restarting
 		if m.nowPlaying != nil && m.nowPlaying.YoutubeID == msg.YoutubeID {
-			if err := player.TogglePause(); err != nil {
+			if err := m.player.TogglePause(); err != nil {
 				m.logs.Error("toggle pause", err)
 			}
 		} else {
-			if err := player.Play(msg.YoutubeID, msg.Title, msg.Artist, m.downloaded[msg.YoutubeID], 0); err != nil {
+			if err := m.player.Play(msg.YoutubeID, msg.Title, msg.Artist, m.downloaded[msg.YoutubeID], 0); err != nil {
 				m.logs.Error("mpv", err)
 			}
 			m.buildQueue(msg.YoutubeID)
 		}
-		m.nowPlaying = player.NowPlaying()
+		m.nowPlaying = m.player.NowPlaying()
 		m.syncNowPlayingToLibrary()
 		return m, nil
 	case screens.DownloadTrackMsg:
@@ -133,8 +133,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// state already updated in downloadResult; nothing to do at app level
 		return m, nil
 	case quitMsg:
-		player.SavePosition()
-		player.Stop()
+		m.player.SavePosition()
+		m.player.Stop()
 		m.logs.Info("Command executed: Quit")
 		return m, tea.Quit
 	case commandsExecutedMsg:
@@ -158,7 +158,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if key.Matches(msg, m.keys.ForceQuit) {
-		player.Stop()
+		m.player.Stop()
 		return m, tea.Quit
 	}
 
@@ -200,10 +200,10 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Next):
 		return m, m.playNextInQueue()
 	case key.Matches(msg, m.keys.SeekForward):
-		_ = player.SeekForward()
+		_ = m.player.SeekForward()
 		return m, nil
 	case key.Matches(msg, m.keys.SeekBackward):
-		_ = player.SeekBackward()
+		_ = m.player.SeekBackward()
 		return m, nil
 	case key.Matches(msg, m.keys.CycleTheme):
 		themes := theme.BuiltIns()
@@ -238,7 +238,7 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case key.Matches(msg, m.keys.Quit):
-		player.Stop()
+		m.player.Stop()
 		return m, tea.Quit
 	}
 
@@ -322,16 +322,16 @@ func visTick() tea.Cmd {
 }
 
 // sessionResumeCmd restarts playback if the state file has a track but mpv isn't running.
-func sessionResumeCmd(downloaded map[string]string) tea.Cmd {
+func sessionResumeCmd(p *player.Player, downloaded map[string]string) tea.Cmd {
 	return func() tea.Msg {
-		if player.IsAlive() {
+		if p.IsAlive() {
 			return nil // mpv already running, nothing to do
 		}
-		s := player.NowPlaying()
+		s := p.NowPlaying()
 		if s == nil || s.Finished {
 			return nil
 		}
-		_ = player.Play(s.YoutubeID, s.Title, s.Artist, downloaded[s.YoutubeID], s.ResumePos)
+		_ = p.Play(s.YoutubeID, s.Title, s.Artist, downloaded[s.YoutubeID], s.ResumePos)
 		return nowPlayingTickMsg{}
 	}
 }
@@ -405,17 +405,17 @@ func (m *Model) buildQueue(youtubeID string) {
 func (m *Model) playNextInQueue() tea.Cmd {
 	next := m.queuePos + 1
 	if next >= len(m.queue) {
-		player.Stop()
+		m.player.Stop()
 		m.nowPlaying = nil
 		m.syncNowPlayingToLibrary()
 		return nowPlayingTick()
 	}
 	m.queuePos = next
 	t := m.queue[next]
-	if err := player.Play(t.YoutubeID, t.SongTitle, t.Artist, m.downloaded[t.YoutubeID], 0); err != nil {
+	if err := m.player.Play(t.YoutubeID, t.SongTitle, t.Artist, m.downloaded[t.YoutubeID], 0); err != nil {
 		m.logs.Error("autoplay", err)
 	}
-	m.nowPlaying = player.NowPlaying()
+	m.nowPlaying = m.player.NowPlaying()
 	m.syncNowPlayingToLibrary()
 	return nowPlayingTick()
 }

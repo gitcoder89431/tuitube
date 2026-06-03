@@ -7,7 +7,7 @@ import (
 )
 
 func TestSwitchScreenForTest(t *testing.T) {
-	model := New(BuildInfo{Version: "test", Commit: "none", Date: "unknown"}, nil)
+	model := New(BuildInfo{Version: "test", Commit: "none", Date: "unknown"}, nil, nil)
 	model = model.SwitchScreenForTest("settings")
 
 	if model.CurrentScreenID() != "settings" {
@@ -16,7 +16,7 @@ func TestSwitchScreenForTest(t *testing.T) {
 }
 
 func TestCommandPaletteThemePreviewCanReturnToRoot(t *testing.T) {
-	model := New(BuildInfo{Version: "test", Commit: "none", Date: "unknown"}, nil)
+	model := New(BuildInfo{Version: "test", Commit: "none", Date: "unknown"}, nil, nil)
 	model = openThemePalette(t, model)
 
 	model = sendKey(t, model, tea.Key{Code: tea.KeyDown})
@@ -42,7 +42,7 @@ func TestCommandPaletteThemePreviewCanReturnToRoot(t *testing.T) {
 }
 
 func TestCommandPaletteThemeSelectionConfirmsPreview(t *testing.T) {
-	model := New(BuildInfo{Version: "test", Commit: "none", Date: "unknown"}, nil)
+	model := New(BuildInfo{Version: "test", Commit: "none", Date: "unknown"}, nil, nil)
 	model = openThemePalette(t, model)
 
 	model = sendKey(t, model, tea.Key{Code: tea.KeyDown})
