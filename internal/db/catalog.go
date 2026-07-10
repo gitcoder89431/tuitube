@@ -45,9 +45,11 @@ func (db *DB) InitUserDB() error {
 		CREATE INDEX IF NOT EXISTS tracks_youtube_id_idx ON tracks(youtube_id);
 		CREATE VIRTUAL TABLE IF NOT EXISTS tracks_fts USING fts5(song_title, artist, raw_title, content='tracks', content_rowid='rowid');
 		CREATE TABLE IF NOT EXISTS playlists (
-			id         INTEGER PRIMARY KEY,
-			name       TEXT NOT NULL,
-			created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+			id          INTEGER PRIMARY KEY,
+			name        TEXT NOT NULL,
+			description TEXT,
+			tags        TEXT,
+			created_at  INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
 		);
 		CREATE TABLE IF NOT EXISTS playlist_tracks (
 			playlist_id INTEGER NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
@@ -62,7 +64,13 @@ func (db *DB) InitUserDB() error {
 		);
 		INSERT OR IGNORE INTO playlists (id, name) VALUES (1, 'Favorites');
 	`)
-	return err
+	if err != nil {
+		return err
+	}
+	// Migrate existing DBs that predate description/tags columns (errors are no-ops).
+	db.conn.Exec("ALTER TABLE playlists ADD COLUMN description TEXT")
+	db.conn.Exec("ALTER TABLE playlists ADD COLUMN tags TEXT")
+	return nil
 }
 
 // CatalogVersion returns the catalog version string stored in the meta table.
@@ -176,31 +184,45 @@ func (db *DB) seedDemoPlaylists() (int, error) {
 		return 0, nil // older catalog, no demo playlists
 	}
 
-	rows, err := db.conn.Query("SELECT name FROM cat.demo_playlists")
+	type demoPlaylist struct {
+		name        string
+		description string
+		tags        string
+	}
+
+	rows, err := db.conn.Query("SELECT name, COALESCE(description,''), COALESCE(tags,'') FROM cat.demo_playlists")
 	if err != nil {
 		return 0, err
 	}
-	var names []string
+	var demos []demoPlaylist
 	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
+		var dp demoPlaylist
+		if err := rows.Scan(&dp.name, &dp.description, &dp.tags); err != nil {
 			rows.Close()
 			return 0, err
 		}
-		names = append(names, name)
+		demos = append(demos, dp)
 	}
 	if err := rows.Close(); err != nil {
 		return 0, err
 	}
 
 	created := 0
-	for _, name := range names {
+	for _, dp := range demos {
 		var count int
-		db.conn.QueryRow("SELECT COUNT(*) FROM playlists WHERE name=?", name).Scan(&count)
+		db.conn.QueryRow("SELECT COUNT(*) FROM playlists WHERE name=?", dp.name).Scan(&count)
 		if count > 0 {
+			// Update description and tags — these are catalog-maintained, not user data.
+			db.conn.Exec(
+				"UPDATE playlists SET description=?, tags=? WHERE name=? AND id != 1",
+				dp.description, dp.tags, dp.name,
+			)
 			continue
 		}
-		res, err := db.conn.Exec("INSERT INTO playlists (name) VALUES (?)", name)
+		res, err := db.conn.Exec(
+			"INSERT INTO playlists (name, description, tags) VALUES (?, ?, ?)",
+			dp.name, dp.description, dp.tags,
+		)
 		if err != nil {
 			return created, err
 		}
@@ -210,7 +232,7 @@ func (db *DB) seedDemoPlaylists() (int, error) {
 			SELECT ?, t.id FROM cat.demo_playlist_tracks dpt
 			JOIN tracks t ON t.youtube_id = dpt.youtube_id
 			WHERE dpt.playlist_name = ?
-		`, pid, name)
+		`, pid, dp.name)
 		if err != nil {
 			return created, err
 		}

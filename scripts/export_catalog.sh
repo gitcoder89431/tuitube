@@ -76,7 +76,9 @@ INSERT INTO meta VALUES ('catalog_version', '$VERSION');
 
 -- demo playlists: shipped with catalog, seeded into new installs
 CREATE TABLE demo_playlists (
-  name TEXT PRIMARY KEY
+  name        TEXT PRIMARY KEY,
+  description TEXT,
+  tags        TEXT
 );
 CREATE TABLE demo_playlist_tracks (
   playlist_name TEXT NOT NULL REFERENCES demo_playlists(name) ON DELETE CASCADE,
@@ -85,8 +87,8 @@ CREATE TABLE demo_playlist_tracks (
 );
 
 -- export all non-Favorites playlists as demos
-INSERT INTO demo_playlists (name)
-  SELECT name FROM src.playlists WHERE id != 1;
+INSERT INTO demo_playlists (name, description, tags)
+  SELECT name, description, tags FROM src.playlists WHERE id != 1;
 
 INSERT INTO demo_playlist_tracks (playlist_name, youtube_id)
   SELECT p.name, t.youtube_id
