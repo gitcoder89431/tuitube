@@ -1,6 +1,17 @@
 # VibeFM — tui-tube Reference
 
-tui-tube is the **source of truth** for VibeFM playlist data. It owns the music catalog and all editorial content. The VibeFM web app consumes this data — it does not produce it.
+## tui-tube's role
+
+tui-tube is the **manual backend / content pipeline** for VibeFM. It owns the music catalog and all editorial content. The VibeFM web app consumes this data — it does not produce it.
+
+Think of it as two separate systems:
+
+| System | Role |
+|--------|------|
+| **tui-tube** | Playlist builder, sync tool, content authoring. Runs locally. Agent-writable. Never touches Convex directly. |
+| **VibeFM web** | Consumes tui-tube's output via a seed script. Serves users. Writes user interactions (likes, dead links) back to Convex. |
+
+When new playlists are added or content is updated in tui-tube, the operator runs the seed script in the VibeFM repo to push changes to Convex. That's the only bridge between the two systems.
 
 ---
 
