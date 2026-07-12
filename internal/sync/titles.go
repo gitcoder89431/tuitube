@@ -3,6 +3,8 @@ package sync
 import (
 	"regexp"
 	"strings"
+
+	"golang.org/x/text/unicode/norm"
 )
 
 // bracketPairs lists all bracket styles to normalize.
@@ -29,6 +31,20 @@ var (
 )
 
 var bannedChars = []string{"♪"}
+
+// CleanArtist strips non-basic-Latin characters from a parsed artist name.
+// NFKD normalisation runs first so accented letters (é → e + combining mark)
+// survive as their base ASCII letter rather than vanishing entirely.
+func CleanArtist(artist string) string {
+	var b strings.Builder
+	for _, r := range norm.NFKD.String(artist) {
+		if r <= 0x7E {
+			b.WriteRune(r)
+		}
+		// combining marks and non-Latin scripts are dropped
+	}
+	return strings.TrimSpace(multiSpaceRe.ReplaceAllString(b.String(), " "))
+}
 
 // CleanTitle normalises a raw YouTube video title for display.
 // Ported from https://github.com/KraXen72/shira (MIT).

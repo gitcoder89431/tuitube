@@ -41,19 +41,20 @@ func (db *DB) UpsertStation(s Station) error {
 	return err
 }
 
-func (db *DB) InsertTrack(stationID, youtubeID, rawTitle, artist, songTitle, thumbnail string, publishedAt int64) (inserted bool, err error) {
+func (db *DB) InsertTrack(stationID, youtubeID, rawTitle, artist, songTitle, thumbnail string, publishedAt int64, durationSeconds int) (inserted bool, err error) {
 	res, err := db.conn.Exec(`
 		INSERT OR IGNORE INTO tracks
-			(id, station_id, youtube_id, raw_title, artist, song_title, search_text, thumbnail, published_at, created_at)
+			(id, station_id, youtube_id, raw_title, artist, song_title, search_text, thumbnail, published_at, duration_seconds, created_at)
 		VALUES (
 			lower(hex(randomblob(16))),
 			?, ?, ?, ?, ?,
 			lower(? || ' ' || ?),
 			?,
 			?,
+			?,
 			strftime('%s','now')*1000
 		)
-	`, stationID, youtubeID, rawTitle, artist, songTitle, artist, songTitle, thumbnail, publishedAt)
+	`, stationID, youtubeID, rawTitle, artist, songTitle, artist, songTitle, thumbnail, publishedAt, durationSeconds)
 	if err != nil {
 		return false, err
 	}

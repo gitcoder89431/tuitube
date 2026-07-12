@@ -29,16 +29,17 @@ func (db *DB) InitUserDB() error {
 			created_at          INTEGER
 		);
 		CREATE TABLE IF NOT EXISTS tracks (
-			id           TEXT PRIMARY KEY,
-			station_id   TEXT NOT NULL REFERENCES stations(id),
-			youtube_id   TEXT NOT NULL UNIQUE,
-			song_title   TEXT,
-			artist       TEXT,
-			raw_title    TEXT NOT NULL,
-			search_text  TEXT,
-			thumbnail    TEXT,
-			published_at INTEGER,
-			created_at   INTEGER
+			id               TEXT PRIMARY KEY,
+			station_id       TEXT NOT NULL REFERENCES stations(id),
+			youtube_id       TEXT NOT NULL UNIQUE,
+			song_title       TEXT,
+			artist           TEXT,
+			raw_title        TEXT NOT NULL,
+			search_text      TEXT,
+			thumbnail        TEXT,
+			published_at     INTEGER,
+			duration_seconds INTEGER,
+			created_at       INTEGER
 		);
 		CREATE INDEX IF NOT EXISTS tracks_station_idx    ON tracks(station_id);
 		CREATE INDEX IF NOT EXISTS tracks_published_idx  ON tracks(published_at DESC);
@@ -67,9 +68,10 @@ func (db *DB) InitUserDB() error {
 	if err != nil {
 		return err
 	}
-	// Migrate existing DBs that predate description/tags columns (errors are no-ops).
+	// Migrate existing DBs that predate these columns (errors are no-ops on existing columns).
 	db.conn.Exec("ALTER TABLE playlists ADD COLUMN description TEXT")
 	db.conn.Exec("ALTER TABLE playlists ADD COLUMN tags TEXT")
+	db.conn.Exec("ALTER TABLE tracks ADD COLUMN duration_seconds INTEGER")
 	return nil
 }
 
