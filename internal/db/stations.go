@@ -73,6 +73,16 @@ func (db *DB) TrackExistsByYoutubeID(youtubeID string) (bool, error) {
 	return count > 0, err
 }
 
+// SetTrackDuration updates duration_seconds for an existing track.
+// Only writes if durationSeconds > 0 and the column is currently NULL.
+func (db *DB) SetTrackDuration(youtubeID string, durationSeconds int) error {
+	_, err := db.conn.Exec(
+		"UPDATE tracks SET duration_seconds=? WHERE youtube_id=? AND duration_seconds IS NULL",
+		durationSeconds, youtubeID,
+	)
+	return err
+}
+
 func (db *DB) UpdateStationSyncTime(stationID string) error {
 	_, err := db.conn.Exec(
 		"UPDATE stations SET last_synced=strftime('%s','now')*1000 WHERE id=?",

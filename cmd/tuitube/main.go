@@ -324,6 +324,11 @@ func runSync(dbPath string, args []string) {
 		os.Exit(1)
 	}
 
+	if err := database.InitUserDB(); err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube sync: migrate db: %v\n", err)
+		os.Exit(1)
+	}
+
 	stations, err := database.ListStations()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "tuitube sync: list stations: %v\n", err)

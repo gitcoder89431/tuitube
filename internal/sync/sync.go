@@ -48,11 +48,19 @@ func Station(database *db.DB, station db.Station, w io.Writer) (int, error) {
 			continue
 		}
 
+		var durationSeconds int
+		if v.Duration > 0 {
+			durationSeconds = int(v.Duration)
+		}
+
 		exists, err := database.TrackExistsByYoutubeID(v.ID)
 		if err != nil {
 			return inserted, err
 		}
 		if exists {
+			if durationSeconds > 0 {
+				database.SetTrackDuration(v.ID, durationSeconds) //nolint:errcheck
+			}
 			continue
 		}
 
@@ -62,10 +70,6 @@ func Station(database *db.DB, station db.Station, w io.Writer) (int, error) {
 		var publishedAt int64
 		if v.Timestamp > 0 {
 			publishedAt = int64(v.Timestamp) * 1000
-		}
-		var durationSeconds int
-		if v.Duration > 0 {
-			durationSeconds = int(v.Duration)
 		}
 
 		ok, err := database.InsertTrack(station.ID, v.ID, v.Title, artist, songTitle, thumbnail, publishedAt, durationSeconds)
