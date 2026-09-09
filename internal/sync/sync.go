@@ -15,7 +15,6 @@ type ytVideo struct {
 	Title             string  `json:"title"`
 	Thumbnail         string  `json:"thumbnail"`
 	Timestamp         float64 `json:"timestamp"`
-	Duration          float64 `json:"duration"`
 	ChannelID         string  `json:"channel_id"`
 	UploaderID        string  `json:"uploader_id"`
 	PlaylistID        string  `json:"playlist_id"`
@@ -48,19 +47,11 @@ func Station(database *db.DB, station db.Station, w io.Writer) (int, error) {
 			continue
 		}
 
-		var durationSeconds int
-		if v.Duration > 0 {
-			durationSeconds = int(v.Duration)
-		}
-
 		exists, err := database.TrackExistsByYoutubeID(v.ID)
 		if err != nil {
 			return inserted, err
 		}
 		if exists {
-			if durationSeconds > 0 {
-				database.SetTrackDuration(v.ID, durationSeconds) //nolint:errcheck
-			}
 			continue
 		}
 
@@ -72,7 +63,7 @@ func Station(database *db.DB, station db.Station, w io.Writer) (int, error) {
 			publishedAt = int64(v.Timestamp) * 1000
 		}
 
-		ok, err := database.InsertTrack(station.ID, v.ID, v.Title, artist, songTitle, thumbnail, publishedAt, durationSeconds)
+		ok, err := database.InsertTrack(station.ID, v.ID, v.Title, artist, songTitle, thumbnail, publishedAt)
 		if err != nil {
 			return inserted, fmt.Errorf("insert %s: %w", v.ID, err)
 		}

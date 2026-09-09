@@ -38,7 +38,6 @@ func (db *DB) InitUserDB() error {
 			search_text      TEXT,
 			thumbnail        TEXT,
 			published_at     INTEGER,
-			duration_seconds INTEGER,
 			created_at       INTEGER
 		);
 		CREATE INDEX IF NOT EXISTS tracks_station_idx    ON tracks(station_id);
@@ -71,7 +70,12 @@ func (db *DB) InitUserDB() error {
 	// Migrate existing DBs that predate these columns (errors are no-ops on existing columns).
 	db.conn.Exec("ALTER TABLE playlists ADD COLUMN description TEXT")
 	db.conn.Exec("ALTER TABLE playlists ADD COLUMN tags TEXT")
-	db.conn.Exec("ALTER TABLE tracks ADD COLUMN duration_seconds INTEGER")
+	// duration_seconds was removed: the historical backfill wrote millisecond
+	// timestamps rather than seconds, and nothing consumed the column — the
+	// player reads live duration from mpv over IPC. Dropped rather than left
+	// holding wrong values. Errors are ignored: the column is already absent on
+	// databases created after this change.
+	db.conn.Exec("ALTER TABLE tracks DROP COLUMN duration_seconds") //nolint:errcheck
 	return nil
 }
 
@@ -152,9 +156,17 @@ func (db *DB) MergeCatalogFull(catalogPath string, dryRun bool) (MergeResult, er
 	db.conn.QueryRow(`SELECT COUNT(*) FROM cat.stations WHERE id NOT IN (SELECT id FROM stations)`).Scan(&result.NewStations)
 	db.conn.QueryRow(`SELECT COUNT(*) FROM cat.tracks WHERE youtube_id NOT IN (SELECT youtube_id FROM tracks)`).Scan(&result.NewTracks)
 
+	// Columns are listed explicitly rather than SELECT *: a released
+	// catalog.db may still carry columns this schema has since dropped, and
+	// positional matching would fail against it.
 	_, err = db.conn.Exec(`
 		INSERT OR IGNORE INTO stations SELECT * FROM cat.stations;
-		INSERT OR IGNORE INTO tracks   SELECT * FROM cat.tracks;
+		INSERT OR IGNORE INTO tracks
+			(id, station_id, youtube_id, song_title, artist, raw_title,
+			 search_text, thumbnail, published_at, created_at)
+		SELECT id, station_id, youtube_id, song_title, artist, raw_title,
+		       search_text, thumbnail, published_at, created_at
+		FROM cat.tracks;
 	`)
 	if err != nil {
 		return result, fmt.Errorf("merge data: %w", err)

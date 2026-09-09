@@ -41,10 +41,10 @@ func (db *DB) UpsertStation(s Station) error {
 	return err
 }
 
-func (db *DB) InsertTrack(stationID, youtubeID, rawTitle, artist, songTitle, thumbnail string, publishedAt int64, durationSeconds int) (inserted bool, err error) {
+func (db *DB) InsertTrack(stationID, youtubeID, rawTitle, artist, songTitle, thumbnail string, publishedAt int64) (inserted bool, err error) {
 	res, err := db.conn.Exec(`
 		INSERT OR IGNORE INTO tracks
-			(id, station_id, youtube_id, raw_title, artist, song_title, search_text, thumbnail, published_at, duration_seconds, created_at)
+			(id, station_id, youtube_id, raw_title, artist, song_title, search_text, thumbnail, published_at, created_at)
 		VALUES (
 			lower(hex(randomblob(16))),
 			?, ?, ?, ?, ?,
@@ -54,7 +54,7 @@ func (db *DB) InsertTrack(stationID, youtubeID, rawTitle, artist, songTitle, thu
 			?,
 			strftime('%s','now')*1000
 		)
-	`, stationID, youtubeID, rawTitle, artist, songTitle, artist, songTitle, thumbnail, publishedAt, durationSeconds)
+	`, stationID, youtubeID, rawTitle, artist, songTitle, artist, songTitle, thumbnail, publishedAt)
 	if err != nil {
 		return false, err
 	}
@@ -71,16 +71,6 @@ func (db *DB) TrackExistsByYoutubeID(youtubeID string) (bool, error) {
 	var count int
 	err := db.conn.QueryRow("SELECT COUNT(*) FROM tracks WHERE youtube_id=?", youtubeID).Scan(&count)
 	return count > 0, err
-}
-
-// SetTrackDuration updates duration_seconds for an existing track.
-// Only writes if durationSeconds > 0 and the column is currently NULL.
-func (db *DB) SetTrackDuration(youtubeID string, durationSeconds int) error {
-	_, err := db.conn.Exec(
-		"UPDATE tracks SET duration_seconds=? WHERE youtube_id=? AND duration_seconds IS NULL",
-		durationSeconds, youtubeID,
-	)
-	return err
 }
 
 func (db *DB) UpdateStationSyncTime(stationID string) error {
