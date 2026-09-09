@@ -1,5 +1,6 @@
-# Binaries
-tui-tube
+# Binaries (built output at repo root; cmd/tuitube is source)
+/tuitube
+/tui-tube
 *.exe
 *.exe~
 *.dll
