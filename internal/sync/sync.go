@@ -36,6 +36,14 @@ func Station(database *db.DB, station db.Station, w io.Writer) (int, error) {
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
 	fmt.Fprintf(w, "  found %d videos\n", len(lines))
 
+	// Tracks pruned on purpose must not come back on the next fetch: they are
+	// still in the channel listing, and the existence check only looks at the
+	// tracks table.
+	tombstoned, err := database.TombstonedIDs()
+	if err != nil {
+		return 0, fmt.Errorf("load pruned tracks: %w", err)
+	}
+
 	inserted := 0
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -44,6 +52,10 @@ func Station(database *db.DB, station db.Station, w io.Writer) (int, error) {
 		}
 		var v ytVideo
 		if err := json.Unmarshal([]byte(line), &v); err != nil {
+			continue
+		}
+
+		if _, pruned := tombstoned[v.ID]; pruned {
 			continue
 		}
 

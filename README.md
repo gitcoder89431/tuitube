@@ -172,6 +172,19 @@ Matching is version-blind by default: a track and its slowed, sped-up, remixed a
 
 The surviving copy is the plain recording where one exists, then the earliest upload, then lowest `youtube_id` so the choice is deterministic. Playlist entries pointing at a dropped copy are remapped onto the keeper, so curated playlists keep their songs.
 
+### Pruned tracks stay pruned
+
+Anything removed by `check-links --prune` or `dedupe --prune` is recorded in `pruned_tracks`. Both `sync` and the catalog merge skip those IDs — without this, every pruned track would come straight back on the next sync, since it is still listed on the channel.
+
+```bash
+tuitube pruned                   # what is being held back, and why
+tuitube pruned --reason dead     # filter
+tuitube pruned --forget ID       # let one track back in
+tuitube pruned --forget-all      # let everything back in
+```
+
+A prune is therefore reversible: forget the entry and the next sync re-adds the track.
+
 ## Programmable Control (MCP)
 
 tuitube exposes 11 MCP tools for headless control — manage your library, control playback, and sync channels without the TUI open. Works with any MCP-compatible client.

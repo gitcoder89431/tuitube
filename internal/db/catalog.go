@@ -62,6 +62,15 @@ func (db *DB) InitUserDB() error {
 			filepath      TEXT NOT NULL,
 			downloaded_at INTEGER NOT NULL DEFAULT (strftime('%s','now')*1000)
 		);
+		-- Tracks deliberately removed by check-links or dedupe. Both sync and
+		-- the catalog merge skip these, so a prune stays pruned instead of
+		-- coming back the next time the channel is fetched.
+		CREATE TABLE IF NOT EXISTS pruned_tracks (
+			youtube_id  TEXT PRIMARY KEY,
+			reason      TEXT NOT NULL,
+			replaced_by TEXT,
+			pruned_at   INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+		);
 		INSERT OR IGNORE INTO playlists (id, name) VALUES (1, 'Favorites');
 	`)
 	if err != nil {
@@ -138,7 +147,9 @@ func (db *DB) MergeCatalogFull(catalogPath string, dryRun bool) (MergeResult, er
 		}
 		defer db.conn.Exec("DETACH DATABASE cat")
 		db.conn.QueryRow(`SELECT COUNT(*) FROM cat.stations WHERE id NOT IN (SELECT id FROM stations)`).Scan(&result.NewStations)
-		db.conn.QueryRow(`SELECT COUNT(*) FROM cat.tracks WHERE youtube_id NOT IN (SELECT youtube_id FROM tracks)`).Scan(&result.NewTracks)
+		db.conn.QueryRow(`SELECT COUNT(*) FROM cat.tracks
+			WHERE youtube_id NOT IN (SELECT youtube_id FROM tracks)
+			  AND youtube_id NOT IN (SELECT youtube_id FROM pruned_tracks)`).Scan(&result.NewTracks)
 		return result, nil
 	}
 
@@ -154,7 +165,9 @@ func (db *DB) MergeCatalogFull(catalogPath string, dryRun bool) (MergeResult, er
 
 	// count new stations before insert
 	db.conn.QueryRow(`SELECT COUNT(*) FROM cat.stations WHERE id NOT IN (SELECT id FROM stations)`).Scan(&result.NewStations)
-	db.conn.QueryRow(`SELECT COUNT(*) FROM cat.tracks WHERE youtube_id NOT IN (SELECT youtube_id FROM tracks)`).Scan(&result.NewTracks)
+	db.conn.QueryRow(`SELECT COUNT(*) FROM cat.tracks
+		WHERE youtube_id NOT IN (SELECT youtube_id FROM tracks)
+		  AND youtube_id NOT IN (SELECT youtube_id FROM pruned_tracks)`).Scan(&result.NewTracks)
 
 	// Columns are listed explicitly rather than SELECT *: a released
 	// catalog.db may still carry columns this schema has since dropped, and
@@ -166,7 +179,8 @@ func (db *DB) MergeCatalogFull(catalogPath string, dryRun bool) (MergeResult, er
 			 search_text, thumbnail, published_at, created_at)
 		SELECT id, station_id, youtube_id, song_title, artist, raw_title,
 		       search_text, thumbnail, published_at, created_at
-		FROM cat.tracks;
+		FROM cat.tracks
+		WHERE youtube_id NOT IN (SELECT youtube_id FROM pruned_tracks);
 	`)
 	if err != nil {
 		return result, fmt.Errorf("merge data: %w", err)

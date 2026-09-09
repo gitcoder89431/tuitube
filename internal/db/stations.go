@@ -51,7 +51,6 @@ func (db *DB) InsertTrack(stationID, youtubeID, rawTitle, artist, songTitle, thu
 			lower(? || ' ' || ?),
 			?,
 			?,
-			?,
 			strftime('%s','now')*1000
 		)
 	`, stationID, youtubeID, rawTitle, artist, songTitle, artist, songTitle, thumbnail, publishedAt)

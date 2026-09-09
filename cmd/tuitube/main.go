@@ -72,6 +72,8 @@ func main() {
 		runCheckLinks(*dbPath, args[1:])
 	case "dedupe":
 		runDedupe(*dbPath, args[1:])
+	case "pruned":
+		runPruned(*dbPath, args[1:])
 	case "bootstrap":
 		runBootstrap(*dbPath, args[1:])
 	case "mcp":
@@ -98,6 +100,7 @@ subcommands:
   doctor          check mpv, yt-dlp, and DB health
   check-links     find dead YouTube links (--prune to remove them)
   dedupe          find duplicate songs across channels (--prune to remove)
+  pruned          list tracks held back from sync (--forget to restore)
   mcp             start the MCP server (for Claude Code integration)
 
 global flags:
@@ -580,6 +583,11 @@ func runCheckLinks(dbPath string, args []string) {
 			fmt.Fprintf(os.Stderr, "tuitube check-links: prune: %v\n", err)
 			os.Exit(1)
 		}
+		// Remember the removal so the next sync does not re-add them.
+		if err := database.AddTombstones(ids, db.PruneReasonDead, nil); err != nil {
+			fmt.Fprintf(os.Stderr, "tuitube check-links: record pruned: %v\n", err)
+			os.Exit(1)
+		}
 		// tracks_fts is external-content with no triggers; without this it
 		// would keep serving the tracks we just removed.
 		if err := database.RebuildFTS(); err != nil {
@@ -694,6 +702,12 @@ func runDedupe(dbPath string, args []string) {
 			fmt.Fprintf(os.Stderr, "tuitube dedupe: prune: %v\n", err)
 			os.Exit(1)
 		}
+		// Remember which copy superseded each dropped one, so the next sync
+		// does not re-add the duplicates.
+		if err := database.AddTombstones(dropIDs, db.PruneReasonDuplicate, remap); err != nil {
+			fmt.Fprintf(os.Stderr, "tuitube dedupe: record pruned: %v\n", err)
+			os.Exit(1)
+		}
 		if err := database.RebuildFTS(); err != nil {
 			fmt.Fprintf(os.Stderr, "tuitube dedupe: fts rebuild: %v\n", err)
 			os.Exit(1)
@@ -762,4 +776,109 @@ func runDedupe(dbPath string, args []string) {
 	default:
 		fmt.Println("\nno duplicates.")
 	}
+}
+
+func runPruned(dbPath string, args []string) {
+	fs := flag.NewFlagSet("pruned", flag.ExitOnError)
+	reason := fs.String("reason", "", "filter by reason: dead or duplicate")
+	forget := fs.String("forget", "", "comma-separated youtube_ids to un-prune")
+	forgetAll := fs.Bool("forget-all", false, "un-prune everything")
+	asJSON := fs.Bool("json", false, "output machine-readable JSON")
+	limit := fs.Int("limit", 20, "entries to list (0 for all)")
+	fs.Parse(args)
+
+	database, err := db.Open(dbPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube pruned: open db: %v\n", err)
+		os.Exit(1)
+	}
+	defer database.Close()
+
+	if err := database.InitUserDB(); err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube pruned: migrate db: %v\n", err)
+		os.Exit(1)
+	}
+
+	switch {
+	case *forgetAll:
+		n, err := database.ForgetTombstones(nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "tuitube pruned: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("forgot %d entries. the next sync may re-add them.\n", n)
+		return
+	case *forget != "":
+		var ids []string
+		for _, id := range strings.Split(*forget, ",") {
+			if id = strings.TrimSpace(id); id != "" {
+				ids = append(ids, id)
+			}
+		}
+		n, err := database.ForgetTombstones(ids)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "tuitube pruned: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("forgot %d of %d entries. the next sync may re-add them.\n", n, len(ids))
+		return
+	}
+
+	counts, err := database.CountTombstones()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube pruned: %v\n", err)
+		os.Exit(1)
+	}
+	entries, err := database.ListTombstones(*reason, *limit)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube pruned: %v\n", err)
+		os.Exit(1)
+	}
+
+	if *asJSON {
+		type jsonEntry struct {
+			YoutubeID  string `json:"youtube_id"`
+			Reason     string `json:"reason"`
+			ReplacedBy string `json:"replaced_by,omitempty"`
+			PrunedAt   int64  `json:"pruned_at"`
+		}
+		out := struct {
+			Counts  map[string]int `json:"counts"`
+			Entries []jsonEntry    `json:"entries"`
+		}{Counts: counts}
+		for _, e := range entries {
+			out.Entries = append(out.Entries, jsonEntry{e.YoutubeID, e.Reason, e.ReplacedBy, e.PrunedAt})
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		enc.Encode(out)
+		return
+	}
+
+	total := 0
+	for _, n := range counts {
+		total += n
+	}
+	if total == 0 {
+		fmt.Println("nothing pruned. sync will add everything the channels list.")
+		return
+	}
+	fmt.Printf("%d tracks pruned and held back from sync:\n", total)
+	for r, n := range counts {
+		fmt.Printf("  %-10s %d\n", r, n)
+	}
+	if len(entries) > 0 {
+		fmt.Println()
+		for _, e := range entries {
+			if e.ReplacedBy != "" {
+				fmt.Printf("  %s  %-10s replaced by %s\n", e.YoutubeID, e.Reason, e.ReplacedBy)
+			} else {
+				fmt.Printf("  %s  %s\n", e.YoutubeID, e.Reason)
+			}
+		}
+		if *limit > 0 && total > len(entries) {
+			fmt.Printf("\n  ... and %d more (--limit 0 to list all)\n", total-len(entries))
+		}
+	}
+	fmt.Println("\nuse `tuitube pruned --forget ID` or `--forget-all` to let them back in.")
 }
