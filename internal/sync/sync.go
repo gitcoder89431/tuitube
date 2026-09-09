@@ -163,11 +163,7 @@ func DiscoverStation(channelURL string, w io.Writer) (db.Station, error) {
 	}, nil
 }
 
-// parseTitle cleans the raw title then splits on " - " for artist/song.
+// parseTitle cleans the raw title then splits it into artist and song.
 func parseTitle(raw string) (artist, songTitle string) {
-	cleaned := CleanTitle(raw)
-	if idx := strings.Index(cleaned, " - "); idx >= 0 {
-		return strings.TrimSpace(cleaned[:idx]), strings.TrimSpace(cleaned[idx+3:])
-	}
-	return "", strings.TrimSpace(cleaned)
+	return SplitArtistTitle(CleanTitle(raw))
 }

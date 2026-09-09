@@ -12,6 +12,7 @@ type Track struct {
 	YoutubeID  string
 	SongTitle  string
 	Artist     string
+	RawTitle   string
 	IsFavorite bool
 }
 

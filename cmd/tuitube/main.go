@@ -16,6 +16,7 @@ import (
 	"github.com/gitcoder89431/tuitube/internal/agentlog"
 	"github.com/gitcoder89431/tuitube/internal/app"
 	"github.com/gitcoder89431/tuitube/internal/db"
+	"github.com/gitcoder89431/tuitube/internal/dedupe"
 	"github.com/gitcoder89431/tuitube/internal/links"
 	"github.com/gitcoder89431/tuitube/internal/mcpserver"
 	"github.com/gitcoder89431/tuitube/internal/player"
@@ -69,6 +70,8 @@ func main() {
 		runDoctor(*dbPath)
 	case "check-links":
 		runCheckLinks(*dbPath, args[1:])
+	case "dedupe":
+		runDedupe(*dbPath, args[1:])
 	case "bootstrap":
 		runBootstrap(*dbPath, args[1:])
 	case "mcp":
@@ -94,6 +97,7 @@ subcommands:
   clean           normalise track titles in the DB
   doctor          check mpv, yt-dlp, and DB health
   check-links     find dead YouTube links (--prune to remove them)
+  dedupe          find duplicate songs across channels (--prune to remove)
   mcp             start the MCP server (for Claude Code integration)
 
 global flags:
@@ -419,8 +423,17 @@ func runClean(dbPath string) {
 
 	updated := 0
 	for _, t := range tracks {
-		cleanedTitle := tubesync.CleanTitle(t.SongTitle)
-		cleanedArtist := strings.TrimSpace(t.Artist)
+		// Re-derive from raw_title rather than re-cleaning the stored values:
+		// rows whose artist failed to parse (en-dash separators, "Artist- Song")
+		// only recover if the split runs again from the original title.
+		cleanedArtist, cleanedTitle := tubesync.SplitArtistTitle(tubesync.CleanTitle(t.RawTitle))
+		if cleanedArtist == "" {
+			cleanedArtist = strings.TrimSpace(t.Artist)
+		}
+		cleanedArtist = tubesync.CleanArtist(cleanedArtist)
+		if cleanedTitle == "" {
+			cleanedTitle = tubesync.CleanTitle(t.SongTitle)
+		}
 		if cleanedTitle == t.SongTitle && cleanedArtist == t.Artist {
 			continue
 		}
@@ -612,5 +625,141 @@ func runCheckLinks(dbPath string, args []string) {
 		fmt.Printf("\nrun `tuitube check-links --prune` to remove %d dead tracks.\n", len(dead))
 	default:
 		fmt.Println("\nno dead links.")
+	}
+}
+
+func runDedupe(dbPath string, args []string) {
+	fs := flag.NewFlagSet("dedupe", flag.ExitOnError)
+	prune := fs.Bool("prune", false, "delete redundant copies (default: report only)")
+	asJSON := fs.Bool("json", false, "output machine-readable JSON summary")
+	stationID := fs.String("station", "", "check only this station ID (default: all)")
+	limit := fs.Int("limit", 25, "groups to list in the report (0 for all)")
+	keepVersions := fs.Bool("keep-versions", false,
+		"treat remixes, slowed/sped-up edits and guest-featuring cuts as distinct songs")
+	fs.Parse(args)
+
+	database, err := db.Open(dbPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube dedupe: open db: %v\n", err)
+		os.Exit(1)
+	}
+	defer database.Close()
+
+	if !database.IsInitialized() {
+		fmt.Fprintln(os.Stderr, "tuitube dedupe: database not initialized — run `tuitube bootstrap` first")
+		os.Exit(1)
+	}
+
+	rows, err := database.DedupeCandidates(*stationID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube dedupe: load tracks: %v\n", err)
+		os.Exit(1)
+	}
+
+	cands := make([]dedupe.Candidate, len(rows))
+	for i, r := range rows {
+		cands[i] = dedupe.Candidate{
+			YoutubeID:   r.YoutubeID,
+			Artist:      r.Artist,
+			SongTitle:   r.SongTitle,
+			RawTitle:    r.RawTitle,
+			PublishedAt: r.PublishedAt,
+			Station:     r.Station,
+		}
+	}
+
+	groups := dedupe.Find(cands, dedupe.Options{KeepVersions: *keepVersions})
+	redundant := 0
+	var dropIDs []string
+	remap := map[string]string{}
+	for _, g := range groups {
+		redundant += len(g.Drop)
+		for _, d := range g.Drop {
+			dropIDs = append(dropIDs, d.YoutubeID)
+			remap[d.YoutubeID] = g.Keep.YoutubeID
+		}
+	}
+
+	pruned, moved := 0, 0
+	if *prune && len(dropIDs) > 0 {
+		// Move playlist entries onto the keeper first, or deleting the
+		// duplicate would quietly drop the song from curated playlists.
+		moved, err = database.RemapPlaylistTracks(remap)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "tuitube dedupe: remap playlists: %v\n", err)
+			os.Exit(1)
+		}
+		pruned, err = database.DeleteTracksByYoutubeID(dropIDs)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "tuitube dedupe: prune: %v\n", err)
+			os.Exit(1)
+		}
+		if err := database.RebuildFTS(); err != nil {
+			fmt.Fprintf(os.Stderr, "tuitube dedupe: fts rebuild: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	if *asJSON {
+		type jsonCopy struct {
+			YoutubeID string `json:"youtube_id"`
+			RawTitle  string `json:"raw_title"`
+			Station   string `json:"station"`
+		}
+		type jsonGroup struct {
+			Artist string     `json:"artist"`
+			Title  string     `json:"title"`
+			Keep   jsonCopy   `json:"keep"`
+			Drop   []jsonCopy `json:"drop"`
+		}
+		out := struct {
+			Scanned   int         `json:"scanned"`
+			Groups    []jsonGroup `json:"groups"`
+			Redundant int         `json:"redundant"`
+			Pruned    int         `json:"pruned"`
+			Remapped  int         `json:"playlist_entries_remapped"`
+		}{Scanned: len(cands), Redundant: redundant, Pruned: pruned, Remapped: moved}
+		for _, g := range groups {
+			jg := jsonGroup{
+				Artist: g.Keep.Artist,
+				Title:  g.Keep.SongTitle,
+				Keep:   jsonCopy{g.Keep.YoutubeID, g.Keep.RawTitle, g.Keep.Station},
+			}
+			for _, d := range g.Drop {
+				jg.Drop = append(jg.Drop, jsonCopy{d.YoutubeID, d.RawTitle, d.Station})
+			}
+			out.Groups = append(out.Groups, jg)
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		enc.Encode(out)
+		return
+	}
+
+	fmt.Printf("scanned %d tracks: %d duplicate groups, %d redundant copies\n",
+		len(cands), len(groups), redundant)
+
+	shown := groups
+	if *limit > 0 && len(shown) > *limit {
+		shown = shown[:*limit]
+	}
+	for _, g := range shown {
+		fmt.Printf("\n  %s — %s\n", g.Keep.Artist, g.Keep.SongTitle)
+		fmt.Printf("    keep  %s  %s  [%s]\n", g.Keep.YoutubeID, g.Keep.RawTitle, g.Keep.Station)
+		for _, d := range g.Drop {
+			fmt.Printf("    drop  %s  %s  [%s]\n", d.YoutubeID, d.RawTitle, d.Station)
+		}
+	}
+	if *limit > 0 && len(groups) > *limit {
+		fmt.Printf("\n  ... and %d more groups (--limit 0 to list all)\n", len(groups)-*limit)
+	}
+
+	switch {
+	case *prune:
+		fmt.Printf("\npruned %d tracks, %d playlist entries remapped, FTS rebuilt.\n", pruned, moved)
+	case redundant > 0:
+		fmt.Printf("\nrun `tuitube dedupe --prune` to remove %d redundant copies.\n", redundant)
+	default:
+		fmt.Println("\nno duplicates.")
 	}
 }

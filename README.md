@@ -157,6 +157,21 @@ Checking runs in two stages. A cheap oEmbed request clears most tracks in one HT
 
 Tracks are only pruned when yt-dlp reports them gone for everyone (private, removed, terminated account). Region blocks and transient failures are reported as `unknown` and never deleted.
 
+### Remove duplicate songs
+
+The curated channels chase the same hits, so one recording often appears as several videos. `dedupe` collapses them:
+
+```bash
+tuitube dedupe                    # report only (default)
+tuitube dedupe --prune            # keep one copy per song
+tuitube dedupe --keep-versions    # treat remixes/slowed/feat. cuts as distinct
+tuitube dedupe --json             # machine-readable
+```
+
+Matching is version-blind by default: a track and its slowed, sped-up, remixed and guest-featuring cuts collapse into one group. `--keep-versions` is the conservative alternative.
+
+The surviving copy is the plain recording where one exists, then the earliest upload, then lowest `youtube_id` so the choice is deterministic. Playlist entries pointing at a dropped copy are remapped onto the keeper, so curated playlists keep their songs.
+
 ## Programmable Control (MCP)
 
 tuitube exposes 11 MCP tools for headless control — manage your library, control playback, and sync channels without the TUI open. Works with any MCP-compatible client.

@@ -106,6 +106,7 @@ func (db *DB) AllTracks() ([]Track, error) {
 		SELECT id, youtube_id,
 		       COALESCE(NULLIF(song_title,''), raw_title),
 		       COALESCE(artist,''),
+		       raw_title,
 		       0
 		FROM tracks
 	`)
@@ -117,7 +118,7 @@ func (db *DB) AllTracks() ([]Track, error) {
 	for rows.Next() {
 		var t Track
 		var isFav int
-		if err := rows.Scan(&t.ID, &t.YoutubeID, &t.SongTitle, &t.Artist, &isFav); err != nil {
+		if err := rows.Scan(&t.ID, &t.YoutubeID, &t.SongTitle, &t.Artist, &t.RawTitle, &isFav); err != nil {
 			return nil, err
 		}
 		tracks = append(tracks, t)

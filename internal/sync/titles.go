@@ -3,6 +3,7 @@ package sync
 import (
 	"regexp"
 	"strings"
+	"unicode"
 
 	"golang.org/x/text/unicode/norm"
 )
@@ -28,6 +29,20 @@ var (
 	multiSpaceRe = regexp.MustCompile(`\s{2,}`)
 	// Japanese character ranges (hiragana, katakana, kanji)
 	japaneseRe = regexp.MustCompile(`[一-龠ぁ-ゔァ-ヴー々〆〤ヶ]`)
+	// parenNoiseRe matches parenthesised upload boilerplate that carries no
+	// musical information. Anything unrecognised inside parens is kept, so
+	// meaningful qualifiers — (Slowed), (Sped Up), (Remix), (feat. X) — survive.
+	parenNoiseRe = regexp.MustCompile(`(?i)\s*\([^()]*\b(?:lyrics?|letra|paroles|testo|legendado|tradu\w*|official|audio|visuali[sz]er|lyric\s*video|official\s*video|hd|hq|4k|full\s*song|color\s*coded)\b[^()]*\)`)
+	// bare boilerplate outside brackets, e.g. "Song (TikTok Remix) Lyrics",
+	// "Ready or Not Lyrics)" (unbalanced in the source), or a stray "LYRICS"
+	// before a quoted snippet. A trailing ")" is consumed so unbalanced
+	// sources do not leave one behind.
+	trailingNoiseRe = regexp.MustCompile(`(?i)\s+(?:lyrics?|letra)\b\)?`)
+	// empty or whitespace-only bracket groups left behind after stripping
+	emptyGroupRe = regexp.MustCompile(`\s*[\(\[]\s*[\)\]]`)
+	// artist/song separator: a dash variant with whitespace after it. Requiring
+	// trailing space keeps hyphenated names such as "Jay-Z" intact.
+	dashSplitRe = regexp.MustCompile(`\s*[-\x{2013}\x{2014}]\s+`)
 )
 
 var bannedChars = []string{"♪"}
@@ -37,11 +52,18 @@ var bannedChars = []string{"♪"}
 // survive as their base ASCII letter rather than vanishing entirely.
 func CleanArtist(artist string) string {
 	var b strings.Builder
-	for _, r := range norm.NFKD.String(artist) {
-		if r <= 0x7E {
+	for _, r := range norm.NFC.String(artist) {
+		switch {
+		case r <= 0x7E:
+			b.WriteRune(r)
+		case unicode.Is(unicode.Latin, r):
+			// Accented Latin names (Tiësto, Måneskin, ROSALÍA) are kept as
+			// written. FTS5's unicode61 tokenizer folds diacritics, so an
+			// ASCII query still matches them — stripping the accent would
+			// only make the display worse.
 			b.WriteRune(r)
 		}
-		// combining marks and non-Latin scripts are dropped
+		// other scripts, combining marks and emoji are dropped
 	}
 	return strings.TrimSpace(multiSpaceRe.ReplaceAllString(b.String(), " "))
 }
@@ -87,5 +109,19 @@ func CleanTitle(title string) string {
 	title = missingSpaceBracket.ReplaceAllString(title, "${1} [")
 	title = multiSpaceRe.ReplaceAllString(title, " ")
 	title = strings.ReplaceAll(title, "_", "-")
+	title = parenNoiseRe.ReplaceAllString(title, "")
+	title = trailingNoiseRe.ReplaceAllString(title, "")
+	title = emptyGroupRe.ReplaceAllString(title, "")
+	title = multiSpaceRe.ReplaceAllString(title, " ")
 	return strings.TrimSpace(title)
+}
+
+// SplitArtistTitle splits a cleaned title into artist and song on the first
+// dash variant followed by whitespace. Returns an empty artist when no
+// separator is present.
+func SplitArtistTitle(cleaned string) (artist, songTitle string) {
+	if loc := dashSplitRe.FindStringIndex(cleaned); loc != nil {
+		return strings.TrimSpace(cleaned[:loc[0]]), strings.TrimSpace(cleaned[loc[1]:])
+	}
+	return "", strings.TrimSpace(cleaned)
 }
