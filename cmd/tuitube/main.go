@@ -16,6 +16,7 @@ import (
 	"github.com/gitcoder89431/tuitube/internal/agentlog"
 	"github.com/gitcoder89431/tuitube/internal/app"
 	"github.com/gitcoder89431/tuitube/internal/db"
+	"github.com/gitcoder89431/tuitube/internal/links"
 	"github.com/gitcoder89431/tuitube/internal/mcpserver"
 	"github.com/gitcoder89431/tuitube/internal/player"
 	tubesync "github.com/gitcoder89431/tuitube/internal/sync"
@@ -66,6 +67,8 @@ func main() {
 		runStatus(*dbPath, args[1:])
 	case "doctor":
 		runDoctor(*dbPath)
+	case "check-links":
+		runCheckLinks(*dbPath, args[1:])
 	case "bootstrap":
 		runBootstrap(*dbPath, args[1:])
 	case "mcp":
@@ -90,6 +93,7 @@ subcommands:
   bootstrap       merge catalog.db into user DB (--catalog PATH)
   clean           normalise track titles in the DB
   doctor          check mpv, yt-dlp, and DB health
+  check-links     find dead YouTube links (--prune to remove them)
   mcp             start the MCP server (for Claude Code integration)
 
 global flags:
@@ -481,4 +485,132 @@ func runAddStation(dbPath string, args []string) {
 	}
 	fmt.Printf("added station %q (id=%s, uploads=%s)\n", station.Name, station.ID, station.UploadsPlaylistID)
 	fmt.Printf("run: tuitube sync --station %s\n", station.ID)
+}
+
+func runCheckLinks(dbPath string, args []string) {
+	fs := flag.NewFlagSet("check-links", flag.ExitOnError)
+	prune := fs.Bool("prune", false, "delete tracks confirmed dead (default: report only)")
+	asJSON := fs.Bool("json", false, "output machine-readable JSON summary")
+	stationID := fs.String("station", "", "check only this station ID (default: all)")
+	concurrency := fs.Int("concurrency", 10, "parallel probe requests")
+	fs.Parse(args)
+
+	database, err := db.Open(dbPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube check-links: open db: %v\n", err)
+		os.Exit(1)
+	}
+	defer database.Close()
+
+	if !database.IsInitialized() {
+		fmt.Fprintln(os.Stderr, "tuitube check-links: database not initialized — run `tuitube bootstrap` first")
+		os.Exit(1)
+	}
+
+	var tracks []db.Track
+	if *stationID != "" {
+		tracks, err = database.ListStationTracks(*stationID)
+	} else {
+		tracks, err = database.AllTracks()
+	}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "tuitube check-links: load tracks: %v\n", err)
+		os.Exit(1)
+	}
+	if len(tracks) == 0 {
+		fmt.Fprintln(os.Stderr, "tuitube check-links: no tracks to check")
+		return
+	}
+
+	input := make([]links.Track, len(tracks))
+	for i, t := range tracks {
+		input[i] = links.Track{
+			YoutubeID: t.YoutubeID,
+			Title:     strings.TrimSpace(t.Artist + " — " + t.SongTitle),
+		}
+	}
+
+	checker := links.NewChecker()
+	checker.ProbeConcurrency = *concurrency
+	if !*asJSON {
+		fmt.Fprintf(os.Stderr, "checking %d tracks...\n", len(input))
+		checker.Progress = func(done, total int) {
+			if done%500 == 0 || done == total {
+				fmt.Fprintf(os.Stderr, "  %d/%d\n", done, total)
+			}
+		}
+	}
+
+	results := checker.Check(input)
+
+	var dead, unknown []links.Result
+	alive := 0
+	for _, r := range results {
+		switch r.Status {
+		case links.StatusAlive:
+			alive++
+		case links.StatusDead:
+			dead = append(dead, r)
+		default:
+			unknown = append(unknown, r)
+		}
+	}
+
+	pruned := 0
+	if *prune && len(dead) > 0 {
+		ids := make([]string, len(dead))
+		for i, r := range dead {
+			ids[i] = r.YoutubeID
+		}
+		pruned, err = database.DeleteTracksByYoutubeID(ids)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "tuitube check-links: prune: %v\n", err)
+			os.Exit(1)
+		}
+		// tracks_fts is external-content with no triggers; without this it
+		// would keep serving the tracks we just removed.
+		if err := database.RebuildFTS(); err != nil {
+			fmt.Fprintf(os.Stderr, "tuitube check-links: fts rebuild: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	if *asJSON {
+		out := struct {
+			Checked int            `json:"checked"`
+			Alive   int            `json:"alive"`
+			Dead    []links.Result `json:"dead"`
+			Unknown []links.Result `json:"unknown"`
+			Pruned  int            `json:"pruned"`
+		}{len(results), alive, dead, unknown, pruned}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		enc.Encode(out)
+		return
+	}
+
+	fmt.Printf("\nchecked %d tracks: %d alive, %d dead, %d unknown\n",
+		len(results), alive, len(dead), len(unknown))
+
+	if len(dead) > 0 {
+		fmt.Println("\ndead:")
+		for _, r := range dead {
+			fmt.Printf("  %s  %s (%s)\n", r.YoutubeID, r.Title, r.Reason)
+		}
+	}
+	if len(unknown) > 0 {
+		fmt.Println("\nunknown (not pruned — transient failure or region block):")
+		for _, r := range unknown {
+			fmt.Printf("  %s  %s (%s)\n", r.YoutubeID, r.Title, r.Reason)
+		}
+	}
+
+	switch {
+	case *prune:
+		fmt.Printf("\npruned %d tracks, FTS rebuilt.\n", pruned)
+	case len(dead) > 0:
+		fmt.Printf("\nrun `tuitube check-links --prune` to remove %d dead tracks.\n", len(dead))
+	default:
+		fmt.Println("\nno dead links.")
+	}
 }

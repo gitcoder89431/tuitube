@@ -142,6 +142,21 @@ tuitube sync               # all stations
 tuitube sync --station ID  # one station
 ```
 
+### Prune dead links
+
+Channels lose videos over time — uploads get set to private or taken down. `check-links` finds tracks whose YouTube video no longer plays:
+
+```bash
+tuitube check-links                 # report only (default)
+tuitube check-links --prune         # remove confirmed-dead tracks
+tuitube check-links --station ID    # one station
+tuitube check-links --json          # machine-readable
+```
+
+Checking runs in two stages. A cheap oEmbed request clears most tracks in one HTTP call each; anything it doesn't return 200 for goes to `yt-dlp` — the same resolver mpv uses — and only its verdict counts. This matters because oEmbed returns 403 for videos that merely have embedding disabled but play fine.
+
+Tracks are only pruned when yt-dlp reports them gone for everyone (private, removed, terminated account). Region blocks and transient failures are reported as `unknown` and never deleted.
+
 ## Programmable Control (MCP)
 
 tuitube exposes 11 MCP tools for headless control — manage your library, control playback, and sync channels without the TUI open. Works with any MCP-compatible client.
