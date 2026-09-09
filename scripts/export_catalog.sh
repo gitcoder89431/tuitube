@@ -74,6 +74,19 @@ INSERT INTO tracks   SELECT * FROM src.tracks;
 INSERT INTO tracks_fts(tracks_fts) VALUES('rebuild');
 INSERT INTO meta VALUES ('catalog_version', '$VERSION');
 
+-- tombstones: tracks pruned as dead or duplicate. Shipped so a fresh install
+-- does not re-add them on its first sync, since they are still listed on the
+-- YouTube channels.
+CREATE TABLE pruned_tracks (
+  youtube_id  TEXT PRIMARY KEY,
+  reason      TEXT NOT NULL,
+  replaced_by TEXT,
+  pruned_at   INTEGER NOT NULL
+);
+
+INSERT INTO pruned_tracks (youtube_id, reason, replaced_by, pruned_at)
+  SELECT youtube_id, reason, replaced_by, pruned_at FROM src.pruned_tracks;
+
 -- demo playlists: shipped with catalog, seeded into new installs
 CREATE TABLE demo_playlists (
   name        TEXT PRIMARY KEY,
@@ -102,10 +115,12 @@ SQL
 
 TRACKS=$(sqlite3 "$OUT" "SELECT COUNT(*) FROM tracks;")
 STATIONS=$(sqlite3 "$OUT" "SELECT COUNT(*) FROM stations;")
+PRUNED=$(sqlite3 "$OUT" "SELECT COUNT(*) FROM pruned_tracks;")
 
 echo "exported:"
 echo "  stations : $STATIONS"
 echo "  tracks   : $TRACKS"
+echo "  pruned   : $PRUNED"
 echo "  version  : $VERSION"
 echo "  size     : $(du -h "$OUT" | cut -f1)"
 echo

@@ -190,6 +190,11 @@ func (db *DB) MergeCatalogFull(catalogPath string, dryRun bool) (MergeResult, er
 		db.conn.Exec("INSERT INTO tracks_fts(tracks_fts) VALUES('rebuild')")
 	}
 
+	// Carry the catalog's tombstones across, so a fresh install does not
+	// re-accumulate the duplicates and dead links this catalog was pruned of
+	// the first time it syncs.
+	db.mergeTombstones() //nolint:errcheck
+
 	newPL, _ := db.seedDemoPlaylists()
 	result.NewPlaylists = newPL
 
@@ -198,6 +203,22 @@ func (db *DB) MergeCatalogFull(catalogPath string, dryRun bool) (MergeResult, er
 		catalogVersionKey, catVersion,
 	)
 	return result, err
+}
+
+// mergeTombstones copies pruned_tracks from the attached catalog. Older
+// catalogs predate the table, in which case there is nothing to carry over.
+func (db *DB) mergeTombstones() error {
+	var n int
+	err := db.conn.QueryRow(
+		"SELECT COUNT(*) FROM cat.sqlite_master WHERE type='table' AND name='pruned_tracks'",
+	).Scan(&n)
+	if err != nil || n == 0 {
+		return nil // older catalog, no tombstones
+	}
+	_, err = db.conn.Exec(`
+		INSERT OR IGNORE INTO pruned_tracks (youtube_id, reason, replaced_by, pruned_at)
+		SELECT youtube_id, reason, replaced_by, pruned_at FROM cat.pruned_tracks`)
+	return err
 }
 
 // seedDemoPlaylists reads demo_playlists from the attached catalog and creates
